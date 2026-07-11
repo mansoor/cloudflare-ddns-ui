@@ -146,6 +146,11 @@ Enable it by setting `ENABLE_NON_CLOUDFLARE_DDNS=true`; a **DDNS** tab appears. 
 | **FreeDNS** (afraid.org) | Pick a **method**: *Update token/URL* — one or more per-host update tokens/URLs (add as many as you like); or *Username & password* — hostname + credentials (DynDNS2-style) |
 | **DynDNS2** | **Server host** (e.g. `dynupdate.no-ip.com`), **hostname**, **username**, **password**, HTTPS on/off |
 
+> **FreeDNS single-host note:** the *username/password* method uses FreeDNS's `/nic/update` endpoint,
+> which is [known to update **all** hosts on the account](https://github.com/ddclient/ddclient/issues/180)
+> rather than scoping to the given hostname. For reliable per-host updates, use the **Update token / URL**
+> method (each token maps to exactly one FreeDNS record).
+
 > **DNS-O-Matic** works via **DynDNS2** with server host `updates.dnsomatic.com`. Use your DNS-O-Matic
 > login, and set the hostname to a specific service or `all.dnsomatic.com` to update *all* your linked
 > services at once.
