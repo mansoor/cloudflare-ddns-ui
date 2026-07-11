@@ -1,0 +1,63 @@
+name: Bug report
+description: Report something not working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please **redact any Cloudflare tokens, webhook URLs,
+        and passwords** from anything you paste below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Image tag (e.g. v1.0.0) or commit SHA.
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How are you running it?
+      options:
+        - Docker (GHCR image)
+        - Docker (built from source)
+        - Node.js directly
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Container/server logs or browser console output. Secrets redacted.
+      render: shell
+  - type: input
+    id: browser
+    attributes:
+      label: Browser (for UI issues)
+      placeholder: e.g. Chrome 128, Firefox 129
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I redacted any Cloudflare tokens, webhook URLs, and passwords from this report.
+          required: true
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
