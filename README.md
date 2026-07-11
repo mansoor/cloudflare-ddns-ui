@@ -75,7 +75,7 @@ Then open <http://localhost:8080>. If you left `ADMIN_PASSWORD` blank, grab the 
 docker compose logs | grep -A2 "Generated a temporary password"
 ```
 
-Config and secrets persist in `./data`. Pin a version with `:v1.0.1` instead of `:latest`. Hit a
+Config and secrets persist in `./data`. Pin a version with `:v0.1.0` instead of `:latest`. Hit a
 problem? See [Troubleshooting](#troubleshooting).
 
 ## Configuration (environment)
@@ -197,9 +197,9 @@ workflow builds and publishes `ghcr.io/mansoor/cloudflare-ddns-ui` with `:vX.Y.Z
 
 ## Troubleshooting
 
-**`EACCES: permission denied` on `/data`.** Fixed in **v1.0.1+** — the container now fixes the data
-directory's ownership on startup. Make sure you're on the latest image (`docker compose pull && docker
-compose up -d`). If you pin an older tag, either upgrade or run `sudo chown -R 1000:1000 ./data` once.
+**`EACCES: permission denied` on `/data`.** The container fixes the data directory's ownership on
+startup, so make sure you're on the latest image (`docker compose pull && docker compose up -d`). As a
+fallback you can run `sudo chown -R 1000:1000 ./data` once.
 
 **Forgot the admin password / can't sign in.** If `ADMIN_PASSWORD` is unset, a random one is printed
 once on first boot — grab it with `docker compose logs | grep -A2 "Generated a temporary password"`.
