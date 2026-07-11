@@ -58,8 +58,14 @@ export default async function apiRoutes(app) {
     const merged = mergeIncomingConfig(existing, incoming);
     await saveConfig(merged);
     applySchedule(merged);
-    // Immediately drop dashboard rows for anything no longer configured.
-    pruneRecords(expectedRecordFqdns(merged));
+    // Immediately drop dashboard rows for anything disabled or removed.
+    const before = expectedRecordFqdns(existing);
+    const after = expectedRecordFqdns(merged);
+    pruneRecords(after);
+    // If a sync target was (re-)enabled or added, refresh in the background so
+    // its rows repopulate right away instead of waiting for the next run.
+    const hasNewTarget = [...after].some((f) => !before.has(f));
+    if (hasNewTarget && !merged.scheduler_paused) triggerNow().catch(() => {});
     return { ok: true, config: redactConfig(merged) };
   });
 
