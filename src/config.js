@@ -32,6 +32,12 @@ export function defaultConfig() {
       channels: [],
     },
     ddns_providers: [],
+    log: {
+      persistent: false, // default: in-memory only
+      memory_rows: 200, // rows kept in memory (in-memory mode)
+      file_name: 'activity.log', // file under DATA_DIR (persistent mode)
+      retention_days: 30, // prune entries older than this nightly (persistent mode)
+    },
   };
 }
 
@@ -89,7 +95,28 @@ export function normalizeConfig(input) {
   cfg.ddns_providers = Array.isArray(cfg.ddns_providers)
     ? cfg.ddns_providers.map(normalizeDdnsProvider)
     : [];
+  cfg.log = normalizeLog(cfg.log);
   return cfg;
+}
+
+function normalizeLog(l) {
+  return {
+    persistent: Boolean(l?.persistent),
+    memory_rows: clampInt(l?.memory_rows, 10, 5000, 200),
+    file_name: sanitizeLogFileName(l?.file_name),
+    retention_days: clampInt(l?.retention_days, 1, 3650, 30),
+  };
+}
+
+// Keep the log file inside DATA_DIR: strip path separators, allow only a safe
+// charset, and drop leading dots so it can never become '.', '..', or escape.
+export function sanitizeLogFileName(name) {
+  const cleaned = String(name || '')
+    .trim()
+    .replace(/[/\\]+/g, '')
+    .replace(/[^A-Za-z0-9._-]/g, '')
+    .replace(/^\.+/, '');
+  return cleaned || 'activity.log';
 }
 
 function normalizeDdnsProvider(p) {

@@ -259,6 +259,36 @@
               </div>
             </div>
 
+            <!-- Activity log -->
+            <div class="card space-y-4 p-4">
+              <div>
+                <h2 class="text-sm font-semibold">Activity log</h2>
+                <p class="text-xs text-slate-500">By default the log lives in memory and resets on restart. Turn on persistence to store it in a file under <code class="rounded bg-slate-100 px-1 dark:bg-slate-700">/data</code> with a retention window.</p>
+              </div>
+              <label class="flex items-start gap-2 text-sm">
+                <input type="checkbox" id="log-persistent" class="mt-0.5 h-4 w-4 rounded border-slate-300" />
+                <span>
+                  <b>Persistent log</b>
+                  <span class="block text-xs text-slate-500">Write activity to a file so it survives restarts.</span>
+                </span>
+              </label>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div id="log-memory-field">
+                  <label class="label" for="log-memory-rows">Rows kept in memory</label>
+                  <input class="input" id="log-memory-rows" type="number" min="10" max="5000" />
+                </div>
+                <div id="log-file-field" class="hidden">
+                  <label class="label" for="log-file-name">Log file name (in /data)</label>
+                  <input class="input" id="log-file-name" placeholder="activity.log" />
+                </div>
+                <div id="log-retention-field" class="hidden">
+                  <label class="label" for="log-retention">Retention (days)</label>
+                  <input class="input" id="log-retention" type="number" min="1" max="3650" />
+                  <p class="mt-1 text-xs text-slate-500">Entries older than this are pruned nightly.</p>
+                </div>
+              </div>
+            </div>
+
             <!-- Notifications -->
             <div class="card space-y-4 p-4">
               <div>
