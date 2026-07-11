@@ -94,7 +94,7 @@ export function normalizeConfig(input) {
 
 function normalizeDdnsProvider(p) {
   // FreeDNS token/URL list — migrate an older single `token` into the list.
-  const urls = Array.isArray(p?.urls)
+  const rawUrls = Array.isArray(p?.urls)
     ? p.urls
     : p?.type === 'freedns' && p?.token
     ? [p.token]
@@ -107,9 +107,10 @@ function normalizeDdnsProvider(p) {
     // DuckDNS
     domains: String(p?.domains || '').trim(),
     token: String(p?.token || ''),
-    // FreeDNS token/URL method
+    // FreeDNS token/URL method — each entry pairs an optional label (the
+    // domain/host it's for, so a long list stays identifiable) with the token/URL.
     method: p?.method === 'userpass' ? 'userpass' : 'token',
-    urls: urls.map((u) => String(u || '').trim()).filter(Boolean),
+    urls: rawUrls.map(normalizeUrlEntry).filter((e) => e.url),
     // DynDNS2 (+ FreeDNS username/password method)
     server: String(p?.server || '').trim(),
     hostname: String(p?.hostname || '').trim(),
@@ -117,6 +118,13 @@ function normalizeDdnsProvider(p) {
     password: String(p?.password || ''),
     https: p?.https !== false, // default true
   };
+}
+
+// A FreeDNS token/URL entry is `{ label, url }`. Older configs stored a bare
+// string per entry — accept those and migrate to the labelled shape.
+function normalizeUrlEntry(u) {
+  if (typeof u === 'string') return { label: '', url: u.trim() };
+  return { label: String(u?.label || '').trim(), url: String(u?.url || '').trim() };
 }
 
 function normalizeWaf(w) {

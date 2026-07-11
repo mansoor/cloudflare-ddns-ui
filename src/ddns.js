@@ -115,25 +115,28 @@ async function updateDynDns2(p, { ipv4, ipv6 }) {
 // FreeDNS replies with either plain text ("Updated…" / "…has not changed") or
 // DynDNS2 codes ("good" / "nochg") — accept both.
 function parseFreeDns(r, label, ip) {
-  if (r.error) return { ok: false, status: 'error', detail: r.error };
-  if (!r.httpOk) return { ok: false, status: 'error', detail: `FreeDNS server error (HTTP ${r.status})` };
+  const who = `FreeDNS ${label}`;
+  if (r.error) return { ok: false, status: 'error', detail: `${who}: ${r.error}` };
+  if (!r.httpOk) return { ok: false, status: 'error', detail: `${who}: server error (HTTP ${r.status})` };
   const body = r.body;
   const first = body.split(/\s+/)[0].toLowerCase();
   if (/has not changed/i.test(body) || first === 'nochg') {
-    return { ok: true, status: 'unchanged', detail: `FreeDNS ${label} already ${ip || '(current)'}` };
+    return { ok: true, status: 'unchanged', detail: `${who} already ${ip || '(current)'}` };
   }
   if (/^updated/i.test(body.trim()) || first === 'good') {
-    return { ok: true, status: 'updated', detail: `FreeDNS ${label} → ${ip || '(current)'}` };
+    return { ok: true, status: 'updated', detail: `${who} → ${ip || '(current)'}` };
   }
-  return { ok: false, status: 'error', detail: `FreeDNS: ${shorten(body)}` };
+  return { ok: false, status: 'error', detail: `${who}: ${shorten(body)}` };
 }
 
 async function hitFreeDnsUrl(entry, server, ip) {
-  const t = String(entry).trim();
-  const isUrl = /^https?:\/\//i.test(t);
-  let url = isUrl ? t : `${server || 'https://freedns.afraid.org/dynamic/update.php'}?${t}`;
+  // entry is `{ label, url }`; tolerate a bare string for safety.
+  const token = String(typeof entry === 'string' ? entry : entry?.url || '').trim();
+  const label = (typeof entry === 'string' ? '' : entry?.label || '').trim() || 'host';
+  const isUrl = /^https?:\/\//i.test(token);
+  let url = isUrl ? token : `${server || 'https://freedns.afraid.org/dynamic/update.php'}?${token}`;
   if (ip) url += (url.includes('?') ? '&' : '?') + 'address=' + encodeURIComponent(ip);
-  return parseFreeDns(await httpGet(url), 'host', ip);
+  return parseFreeDns(await httpGet(url), label, ip);
 }
 
 async function updateFreeDns(p, { ipv4, ipv6 }) {
@@ -154,7 +157,7 @@ async function updateFreeDns(p, { ipv4, ipv6 }) {
   }
 
   // token / URL method — update each entry and aggregate.
-  const urls = (p.urls || []).filter(Boolean);
+  const urls = (p.urls || []).filter((u) => (typeof u === 'string' ? u : u?.url));
   if (!urls.length) return { ok: false, status: 'error', detail: 'no update tokens/URLs configured' };
   const results = [];
   for (const u of urls) results.push(await hitFreeDnsUrl(u, p.server, ip));
@@ -163,6 +166,7 @@ async function updateFreeDns(p, { ipv4, ipv6 }) {
   const updated = results.filter((r) => r.ok && r.status === 'updated').length;
   const name = p.label || 'FreeDNS';
   if (errs.length) {
+    // Surface the first failing entry's detail (which now carries its label).
     return { ok: false, status: 'error', detail: `${name}: ${errs.length}/${results.length} failed — ${errs[0].detail}` };
   }
   const n = results.length;
