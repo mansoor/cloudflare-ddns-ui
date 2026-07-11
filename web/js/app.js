@@ -76,6 +76,7 @@ function initTabs() {
 // ---------- settings rendering ----------
 let META = { ip4_providers: [], ip6_providers: [], features: {} };
 let PAUSED = false; // last-known scheduler paused state (from /api/status)
+let LAST_RECORDS = []; // most recent records, so the filter can re-apply instantly
 
 // Show/hide feature-gated UI (the DDNS tab) based on server flags.
 function applyFeatures() {
@@ -1045,25 +1046,43 @@ function renderStatus(s) {
   const pauseBtn = $('#pause-toggle');
   if (pauseBtn) pauseBtn.textContent = PAUSED ? 'Resume scheduler' : 'Pause scheduler';
 
-  // records table
+  // records table (filtered by the header search box)
+  LAST_RECORDS = s.records || [];
+  renderRecords(LAST_RECORDS);
+}
+
+// Catch-all filter: matches the query against name / type / status / detail / proxied.
+function recordMatchesFilter(r, q) {
+  if (!q) return true;
+  const hay = `${r.fqdn} ${r.type} ${r.status} ${r.detail || ''} ${r.proxied ? 'proxied' : ''}`.toLowerCase();
+  return hay.includes(q);
+}
+
+function renderRecords(records) {
   const body = $('#records-body');
-  if (!s.records || !s.records.length) {
+  const q = ($('#records-filter')?.value || '').trim().toLowerCase();
+  if (!records || !records.length) {
     body.innerHTML =
       '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records yet — run an update.</td></tr>';
-  } else {
-    body.innerHTML = s.records
-      .map((r) => {
-        const style = STATUS_STYLES[r.status] || STATUS_STYLES.unchanged;
-        return `<tr>
+    return;
+  }
+  const rows = records.filter((r) => recordMatchesFilter(r, q));
+  if (!rows.length) {
+    body.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records match “${esc(q)}”.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows
+    .map((r) => {
+      const style = STATUS_STYLES[r.status] || STATUS_STYLES.unchanged;
+      return `<tr>
           <td class="px-4 py-2 font-mono">${esc(r.fqdn)}</td>
           <td class="px-4 py-2">${esc(r.type)}</td>
           <td class="px-4 py-2">${r.proxied ? '🟠 yes' : 'no'}</td>
           <td class="px-4 py-2"><span class="badge ${style}">${esc(r.status)}</span></td>
           <td class="px-4 py-2 text-slate-500">${esc(r.detail || '')}</td>
         </tr>`;
-      })
-      .join('');
-  }
+    })
+    .join('');
 }
 
 function renderLog(log) {
@@ -1253,6 +1272,7 @@ async function init() {
   });
   $('#update-now').addEventListener('click', updateNow);
   $('#pause-toggle').addEventListener('click', togglePause);
+  $('#records-filter').addEventListener('input', () => renderRecords(LAST_RECORDS));
   $('#ip4-provider').addEventListener('change', () => toggleCustom('#ip4-provider', '#ip4-custom'));
   $('#ip6-provider').addEventListener('change', () => toggleCustom('#ip6-provider', '#ip6-custom'));
 
