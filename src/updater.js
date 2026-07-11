@@ -34,11 +34,12 @@ function ddnsHost(p) {
 export function expectedRecordFqdns(cfg) {
   const set = new Set();
   for (const acc of cfg.cloudflare || []) {
-    if (!acc.zone_name) continue;
+    if (acc.enabled === false || !acc.zone_name) continue; // disabled → its rows get pruned
     for (const sub of acc.subdomains || []) set.add(buildFqdn(sub.name, acc.zone_name));
   }
   for (const w of cfg.waf_lists || []) if (w.list_name) set.add(w.list_name);
   for (const p of cfg.ddns_providers || []) {
+    if (p.enabled === false) continue; // disabled → pruned
     const host = ddnsHost(p);
     if (host) set.add(host);
   }
