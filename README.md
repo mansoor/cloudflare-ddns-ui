@@ -75,11 +75,8 @@ Then open <http://localhost:8080>. If you left `ADMIN_PASSWORD` blank, grab the 
 docker compose logs | grep -A2 "Generated a temporary password"
 ```
 
-Config and secrets persist in `./data`. Pin a version with `:v1.0.0` instead of `:latest`.
-
-> If the pull fails with `unauthorized`/`denied`, the GHCR package is private — either make it
-> public (repo → **Packages** → package → **Package settings** → change visibility), or authenticate
-> first: `echo <token> | docker login ghcr.io -u mansoor --password-stdin`.
+Config and secrets persist in `./data`. Pin a version with `:v1.0.1` instead of `:latest`. Hit a
+problem? See [Troubleshooting](#troubleshooting).
 
 ## Configuration (environment)
 
@@ -179,6 +176,34 @@ During UI work, watch the CSS in a second terminal: `npm run watch:css`.
 
 Releases are cut by pushing a `v*` tag — the [`docker-release`](.github/workflows/docker-release.yml)
 workflow builds and publishes `ghcr.io/mansoor/cloudflare-ddns-ui` with `:vX.Y.Z` and `:latest` tags.
+
+## Troubleshooting
+
+**`EACCES: permission denied` on `/data`.** Fixed in **v1.0.1+** — the container now fixes the data
+directory's ownership on startup. Make sure you're on the latest image (`docker compose pull && docker
+compose up -d`). If you pin an older tag, either upgrade or run `sudo chown -R 1000:1000 ./data` once.
+
+**Forgot the admin password / can't sign in.** If `ADMIN_PASSWORD` is unset, a random one is printed
+once on first boot — grab it with `docker compose logs | grep -A2 "Generated a temporary password"`.
+Set `ADMIN_PASSWORD` in your env/compose to make it permanent (a change needs a restart).
+
+**Sessions drop on every restart.** Set a fixed `SESSION_SECRET`. If it's blank, one is generated and
+saved to `data/.session-secret`, so this only bites when the `./data` volume isn't persistent.
+
+**"Verify & load zones" (or WAF) fails.** Check the token scope — **Zone → DNS → Edit** for zones,
+**Account → Account Filter Lists → Edit** for WAF lists — and that it covers the right zone/account.
+The exact Cloudflare error appears in the dashboard's activity log.
+
+**Records aren't updating.** Confirm the scheduler isn't paused (dashboard badge), the zone is saved,
+the A/AAAA toggles and IP provider are set, then hit **Update now** and read the activity log. Note the
+detected IP is your *public* IP as seen by the provider — behind CGNAT, DDNS can't make you reachable.
+
+**Notifications not arriving.** Use **Send test** on the channel, verify the webhook URL, and make sure
+the relevant event toggle is on. Send failures are logged in the activity log.
+
+**`docker pull` says `unauthorized`/`denied`.** The official image is public, so this shouldn't happen.
+If you *forked* and published your own package, it may be private — make it public (repo → **Packages**
+→ **Package settings** → change visibility) or `docker login ghcr.io` first.
 
 ## License
 
