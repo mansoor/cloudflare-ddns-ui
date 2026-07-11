@@ -783,10 +783,15 @@ function toggleDdnsFields(node) {
 }
 
 // One FreeDNS update token/URL row.
-function makeDdnsUrlRow(node, value = '', { masked = false } = {}) {
+function makeDdnsUrlRow(node, entry = {}, { masked = false } = {}) {
+  // Accept a string (legacy) or a { label, url } object.
+  const { label = '', url = '' } =
+    typeof entry === 'string' ? { url: entry } : entry || {};
   const row = $('#ddns-url-template').content.firstElementChild.cloneNode(true);
   const input = $('.ddns-url', row);
+  const value = url;
   input.value = value;
+  $('.ddns-url-label', row).value = label;
   $('.ddns-url-remove', row).addEventListener('click', () => row.remove());
 
   // Existing (already-saved) URLs load masked with an eye toggle to reveal.
@@ -906,7 +911,12 @@ function collectOneDdns(node) {
     domains: $('.ddns-domains', node).value.trim(),
     token: tokenVal || (node.dataset.hasToken ? REDACTED : ''),
     method: $('.ddns-fd-method', node).value,
-    urls: $$('.ddns-urls .ddns-url', node).map((i) => i.value.trim()).filter(Boolean),
+    urls: $$('.ddns-urls .ddns-url-row', node)
+      .map((row) => ({
+        label: $('.ddns-url-label', row).value.trim(),
+        url: $('.ddns-url', row).value.trim(),
+      }))
+      .filter((e) => e.url),
     server: $('.ddns-server', node).value.trim(),
     hostname: $('.ddns-hostname', node).value.trim(),
     username: $('.ddns-username', node).value.trim(),
