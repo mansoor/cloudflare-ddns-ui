@@ -10,11 +10,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(path.join(here, '..', 'package.json'), 'utf8'));
 
 export const APP_VERSION = pkg.version;
-export const REPO_URL = 'https://github.com/mansoor/cloudflare-ddns-ui';
+export const REPO_URL = 'https://github.com/mansoor/cloudflare-ddns-plus';
 export const RELEASES_URL = `${REPO_URL}/releases`;
 export const LICENSE = 'MIT';
 
-const LATEST_API = 'https://api.github.com/repos/mansoor/cloudflare-ddns-ui/releases/latest';
+const LATEST_API = 'https://api.github.com/repos/mansoor/cloudflare-ddns-plus/releases/latest';
 const TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const DISABLED = /^(1|true|yes|on)$/i.test(String(process.env.DISABLE_UPDATE_CHECK || '').trim());
 
@@ -44,7 +44,7 @@ async function fetchLatestTag() {
   const t = setTimeout(() => ctrl.abort(), 8000);
   try {
     const res = await fetch(LATEST_API, {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'cloudflare-ddns-ui' },
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'cloudflare-ddns-plus' },
       signal: ctrl.signal,
     });
     if (!res.ok) throw new Error(`GitHub ${res.status}`);

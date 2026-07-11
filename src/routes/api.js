@@ -141,7 +141,7 @@ export default async function apiRoutes(app) {
     if (!channel) return reply.code(404).send({ error: 'Channel not found — save it first' });
     const res = await sendNotification(channel, {
       event: 'test',
-      title: 'Cloudflare DDNS UI — test',
+      title: 'Cloudflare DDNS+ — test',
       message: 'This is a test notification. If you can read this, the channel works. ✅',
       ipv4: getState().currentIPv4,
       ipv6: getState().currentIPv6,

@@ -1,8 +1,8 @@
 services:
-  cloudflare-ddns-ui:
+  cloudflare-ddns-plus:
     build: .
-    image: cloudflare-ddns-ui
-    container_name: cloudflare-ddns-ui
+    image: cloudflare-ddns-plus
+    container_name: cloudflare-ddns-plus
     restart: unless-stopped
     ports:
       - "8080:8080"
