@@ -504,6 +504,7 @@
               <select class="input ddns-type">
                 <option value="duckdns">DuckDNS</option>
                 <option value="dyndns2">DynDNS2 (No-IP, Dynu, Namecheap…)</option>
+                <option value="freedns">FreeDNS (afraid.org)</option>
               </select>
             </div>
             <div>
@@ -519,8 +520,8 @@
               <label class="label">Domains <span class="text-slate-400">(comma-separated, without .duckdns.org)</span></label>
               <input class="input ddns-domains" placeholder="myhost" />
             </div>
-            <div class="ddns-f-duckdns ddns-field sm:col-span-2">
-              <label class="label">Token</label>
+            <div class="ddns-f-duckdns ddns-f-freedns ddns-field sm:col-span-2">
+              <label class="label ddns-token-label">Token</label>
               <input class="input ddns-token" type="password" placeholder="DuckDNS token" autocomplete="off" />
             </div>
 
@@ -529,8 +530,8 @@
               <label class="label">Server host</label>
               <input class="input ddns-server" placeholder="dynupdate.no-ip.com" />
             </div>
-            <div class="ddns-f-dyndns2 ddns-field hidden sm:col-span-2">
-              <label class="label">Hostname</label>
+            <div class="ddns-f-dyndns2 ddns-f-freedns ddns-field hidden sm:col-span-2">
+              <label class="label ddns-hostname-label">Hostname</label>
               <input class="input ddns-hostname" placeholder="myhost.ddns.net" />
             </div>
             <div class="ddns-f-dyndns2 ddns-field hidden">

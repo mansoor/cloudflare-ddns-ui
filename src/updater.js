@@ -18,6 +18,16 @@ function buildFqdn(subName, zoneName) {
   return `${n}.${zoneName}`;
 }
 
+// Display label + host for a non-Cloudflare DDNS provider (also the record fqdn).
+function ddnsTypeLabel(type) {
+  return type === 'dyndns2' ? 'DynDNS2' : type === 'freedns' ? 'FreeDNS' : 'DuckDNS';
+}
+function ddnsHost(p) {
+  if (p.type === 'dyndns2') return p.hostname;
+  if (p.type === 'freedns') return p.hostname || p.label;
+  return p.domains;
+}
+
 // The set of record FQDNs the config currently manages — used to prune stale
 // dashboard rows the moment something is removed. Mirrors how runUpdate labels
 // each record's `fqdn`.
@@ -29,7 +39,7 @@ export function expectedRecordFqdns(cfg) {
   }
   for (const w of cfg.waf_lists || []) if (w.list_name) set.add(w.list_name);
   for (const p of cfg.ddns_providers || []) {
-    const host = p.type === 'dyndns2' ? p.hostname : p.domains;
+    const host = ddnsHost(p);
     if (host) set.add(host);
   }
   return set;
@@ -314,8 +324,8 @@ export async function runUpdate(
     // 5) Non-Cloudflare DDNS providers (opt-in; scoped out when disabled).
     for (const p of ddnsProviders) {
       if (!p.enabled) continue;
-      const typeLabel = p.type === 'dyndns2' ? 'DynDNS2' : 'DuckDNS';
-      const host = p.type === 'dyndns2' ? p.hostname : p.domains;
+      const typeLabel = ddnsTypeLabel(p.type);
+      const host = ddnsHost(p);
       try {
         const r = await updateDdnsProvider(p, { ipv4: cfg.a ? ipv4 : null, ipv6: cfg.aaaa ? ipv6 : null });
         records.push({
