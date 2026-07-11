@@ -14,6 +14,6 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       SESSION_SECRET: ${SESSION_SECRET:-}
       # Set to true to enable the optional "Other DDNS" tab (DuckDNS / DynDNS2).
-      ENABLE_NON_CLOUDFLARE_DDNS: ${ENABLE_NON_CLOUDFLARE_DDNS:-}
+      ENABLE_NON_CLOUDFLARE_DDNS: ${ENABLE_NON_CLOUDFLARE_DDNS:-false}
     volumes:
       - ./data:/data

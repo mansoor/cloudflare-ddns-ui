@@ -41,6 +41,7 @@ docker run -d \
   -p 8080:8080 \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=change-me \
+  -e ENABLE_NON_CLOUDFLARE_DDNS=false \
   -v "$PWD/data:/data" \
   --restart unless-stopped \
   ghcr.io/mansoor/cloudflare-ddns-ui:latest
@@ -60,8 +61,9 @@ services:
       - "8080:8080"
     environment:
       ADMIN_USERNAME: admin
-      ADMIN_PASSWORD: change-me      # leave blank to get a random one in the logs
-      SESSION_SECRET: ""             # leave blank to auto-generate (persisted in ./data)
+      ADMIN_PASSWORD: change-me                # leave blank to get a random one in the logs
+      SESSION_SECRET: ""                       # leave blank to auto-generate (persisted in ./data)
+      ENABLE_NON_CLOUDFLARE_DDNS: "false"      # set "true" for the DuckDNS / DynDNS2 tab
     volumes:
       - ./data:/data
 ```
