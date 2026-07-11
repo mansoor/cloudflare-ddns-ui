@@ -201,6 +201,10 @@ export async function runUpdate(
 
     // 2) Walk each selected account / subdomain / record type.
     for (const acc of accounts) {
+      if (acc.enabled === false) {
+        state.log('info', `Skipping disabled zone "${acc.label || acc.zone_name || acc.zone_id}"`);
+        continue;
+      }
       if (!acc.api_token || !acc.zone_id || !acc.zone_name) {
         state.log('warn', `Skipping account "${acc.label || acc.zone_id}" — missing token/zone`);
         continue;

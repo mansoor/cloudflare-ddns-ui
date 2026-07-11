@@ -151,6 +151,7 @@ function normalizeAccount(acc) {
   const subdomains = Array.isArray(acc?.subdomains) ? acc.subdomains : [];
   return {
     id: acc?.id || randomUUID(),
+    enabled: acc?.enabled !== false, // default on (back-compat for older configs)
     label: String(acc?.label || ''),
     api_token: String(acc?.api_token || ''),
     zone_id: String(acc?.zone_id || ''),

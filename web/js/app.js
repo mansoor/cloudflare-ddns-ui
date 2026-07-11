@@ -130,6 +130,10 @@ function updateAccountSummary(node) {
     (hasToken
       ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
       : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300');
+
+  // "disabled" pill only shows when the zone is turned off.
+  const enabled = $('.acc-enabled', node).checked;
+  $('.acc-disabled-badge', node).classList.toggle('hidden', enabled);
 }
 
 function setCollapsed(node, collapsed) {
@@ -159,6 +163,8 @@ function makeAccountRow(acc = {}, { expanded = false } = {}) {
     zoneSel.appendChild(opt);
   }
 
+  $('.acc-enabled', node).checked = acc.enabled !== false; // default on
+
   const subsWrap = $('.acc-subs', node);
   const subs = acc.subdomains && acc.subdomains.length ? acc.subdomains : [{ name: '', proxied: false }];
   subs.forEach((s) => subsWrap.appendChild(makeSubRow(node, s)));
@@ -166,6 +172,7 @@ function makeAccountRow(acc = {}, { expanded = false } = {}) {
   // Keep the summary in sync as fields change.
   $('.acc-label', node).addEventListener('input', () => updateAccountSummary(node));
   $('.acc-token', node).addEventListener('input', () => updateAccountSummary(node));
+  $('.acc-enabled', node).addEventListener('change', () => updateAccountSummary(node));
   zoneSel.addEventListener('change', () => updateAccountSummary(node));
 
   $('.acc-add-sub', node).addEventListener('click', () => {
@@ -322,6 +329,7 @@ function collectConfig() {
     }));
     return {
       id: node.dataset.id || undefined,
+      enabled: $('.acc-enabled', node).checked,
       label: $('.acc-label', node).value.trim(),
       // Empty token but one is stored => send placeholder so server keeps it.
       api_token: tokenVal || (node.dataset.hasToken ? REDACTED : ''),

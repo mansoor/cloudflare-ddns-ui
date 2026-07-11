@@ -308,6 +308,7 @@
             </div>
           </div>
           <div class="flex shrink-0 items-center gap-2">
+            <span class="acc-disabled-badge badge hidden bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-200">disabled</span>
             <span class="acc-summary-badge badge bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">no token</span>
             <button type="button" class="acc-update badge bg-brand-100 text-brand-700 hover:bg-brand-500 hover:text-white dark:bg-brand-700/30 dark:text-brand-100" title="Update just this zone now">Update</button>
           </div>
@@ -333,6 +334,9 @@
                 <option value="">— verify token to load zones —</option>
               </select>
             </div>
+            <label class="sm:col-span-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" class="acc-enabled h-4 w-4 rounded border-slate-300" /> Enabled
+            </label>
             <div class="sm:col-span-2">
               <div class="mb-1 flex items-center justify-between">
                 <label class="label mb-0">Subdomains</label>
