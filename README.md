@@ -22,7 +22,7 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - ⏱️ **Scheduler** — configurable interval, runs on startup, "Update now" button, and a **Pause/Resume** toggle (the paused state persists across restarts)
 - 🎯 **Per-zone update & enable/disable** — an "Update" badge syncs just one zone on demand; toggle a zone off to park it without deleting
 - 🛡️ **WAF / IP Lists** — keep a Cloudflare account-level IP List updated with your current IP, to reference in firewall rules
-- 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS & generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, …) behind a flag
+- 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS, FreeDNS, & generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, …) behind a flag
 - 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, on update failures, IP changes, and/or successful record changes (each toggleable)
 - 🎨 **Light / Dark / System** theme
 - ✅ **Idempotent** — only touches records that actually changed
@@ -133,16 +133,17 @@ Use **Send test** on a saved channel to confirm it works. IP-change alerts fire 
 
 ## Other DDNS providers (optional)
 
-This is a Cloudflare-first tool, but if you also have a one-off dynamic host on **DuckDNS** or a
-**DynDNS2**-compatible provider (No-IP, Dynu, Namecheap, deSEC, FreeDNS, many routers), you can keep it
-updated here too — no need for a second tool. It rides on the same schedule, IP detection, activity log,
-and notifications.
+This is a Cloudflare-first tool, but if you also have a one-off dynamic host on **DuckDNS**, **FreeDNS**
+(afraid.org), or a **DynDNS2**-compatible provider (No-IP, Dynu, Namecheap, deSEC, many routers), you can
+keep it updated here too — no need for a second tool. It rides on the same schedule, IP detection,
+activity log, and notifications.
 
 Enable it by setting `ENABLE_NON_CLOUDFLARE_DDNS=true`; a **DDNS** tab appears. Then **Add provider**:
 
 | Provider | What you provide |
 |---|---|
 | **DuckDNS** | Domain(s) (without `.duckdns.org`) + your **token** |
+| **FreeDNS** (afraid.org) | Your per-host **update token or URL** (from the Dynamic DNS page); optional hostname for display |
 | **DynDNS2** | **Server host** (e.g. `dynupdate.no-ip.com`), **hostname**, **username**, **password**, HTTPS on/off |
 
 **Test** does a live update and shows the provider's response. When off, the tab is hidden and these
@@ -176,7 +177,7 @@ config.json (zones + subdomains) ──▶ updater ──▶ Cloudflare API (A/A
 - `src/updater.js` — the sync engine (create / update / unchanged / optional purge / WAF / DDNS / notifications)
 - `src/scheduler.js` — cron loop, reschedules when you save settings
 - `src/notify.js` — Discord / Slack / webhook senders · `src/runtime.js` — last-IP persistence
-- `src/ddns.js` — DuckDNS / DynDNS2 providers · `src/features.js` — opt-in feature flags
+- `src/ddns.js` — DuckDNS / FreeDNS / DynDNS2 providers · `src/features.js` — opt-in feature flags
 - `src/routes/api.js` — REST API behind session auth
 - `web/` — Tailwind UI (login + dashboard / zones / waf / ddns / settings)
 

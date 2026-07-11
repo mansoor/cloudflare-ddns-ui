@@ -765,16 +765,45 @@ function updateDdnsEmpty() {
 
 function toggleDdnsFields(node) {
   const type = $('.ddns-type', node).value;
-  $$('.ddns-f-duckdns', node).forEach((el) => el.classList.toggle('hidden', type !== 'duckdns'));
-  $$('.ddns-f-dyndns2', node).forEach((el) => el.classList.toggle('hidden', type !== 'dyndns2'));
+  // A field group is shown if it carries the `ddns-f-<type>` class (some are
+  // shared, e.g. the token field for duckdns + freedns).
+  $$('.ddns-field', node).forEach((el) => {
+    el.classList.toggle('hidden', !el.classList.contains(`ddns-f-${type}`));
+  });
+  applyDdnsTypeText(node, type);
+}
+
+// Adapt the shared token/hostname field labels + placeholders per provider type.
+function applyDdnsTypeText(node, type) {
+  const tokenLabel = $('.ddns-token-label', node);
+  const tokenInput = $('.ddns-token', node);
+  const hostLabel = $('.ddns-hostname-label', node);
+  const hostInput = $('.ddns-hostname', node);
+  const setTokenPh = (ph) => {
+    if (tokenInput && node.dataset.hasToken !== '1') tokenInput.placeholder = ph;
+  };
+  if (type === 'freedns') {
+    if (tokenLabel) tokenLabel.textContent = 'Update token or URL';
+    setTokenPh('random token from your update URL, or the full URL');
+    if (hostLabel) hostLabel.textContent = 'Hostname (optional, for display)';
+    if (hostInput) hostInput.placeholder = 'myhost.mooo.com';
+  } else if (type === 'duckdns') {
+    if (tokenLabel) tokenLabel.textContent = 'Token';
+    setTokenPh('DuckDNS token');
+  } else {
+    if (hostLabel) hostLabel.textContent = 'Hostname';
+    if (hostInput) hostInput.placeholder = 'myhost.ddns.net';
+  }
 }
 
 function updateDdnsSummary(node) {
   const type = $('.ddns-type', node).value;
-  const host = type === 'dyndns2' ? $('.ddns-hostname', node).value.trim() : $('.ddns-domains', node).value.trim();
+  const hostname = $('.ddns-hostname', node).value.trim();
+  const domains = $('.ddns-domains', node).value.trim();
   const label = $('.ddns-label', node).value.trim();
+  const host = type === 'dyndns2' ? hostname : type === 'freedns' ? hostname || label : domains;
   const enabled = $('.ddns-enabled', node).checked;
-  const typeName = type === 'dyndns2' ? 'DynDNS2' : 'DuckDNS';
+  const typeName = type === 'dyndns2' ? 'DynDNS2' : type === 'freedns' ? 'FreeDNS' : 'DuckDNS';
   $('.ddns-summary-title', node).textContent = label || host || 'New provider';
   $('.ddns-summary-meta', node).textContent = `${typeName} · ${host || 'not configured'}`;
   const badge = $('.ddns-summary-badge', node);
@@ -861,6 +890,9 @@ function ddnsMissingField(node) {
   const type = $('.ddns-type', node).value;
   if (type === 'duckdns') {
     if (!$('.ddns-domains', node).value.trim()) return 'Enter the DuckDNS domain(s).';
+  } else if (type === 'freedns') {
+    if (!$('.ddns-token', node).value.trim() && node.dataset.hasToken !== '1')
+      return 'Enter the FreeDNS update token or URL.';
   } else {
     if (!$('.ddns-server', node).value.trim()) return 'Enter the DynDNS2 server host.';
     if (!$('.ddns-hostname', node).value.trim()) return 'Enter the hostname.';

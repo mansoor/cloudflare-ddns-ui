@@ -1,8 +1,8 @@
-// Simple "update-a-hostname" DDNS providers (DuckDNS + generic DynDNS2).
+// Simple "update-a-hostname" DDNS providers (DuckDNS, DynDNS2, FreeDNS).
 // Each updater returns { ok, status, detail } and never throws.
 // status: 'updated' | 'unchanged' | 'error'.
 
-export const DDNS_TYPES = ['duckdns', 'dyndns2'];
+export const DDNS_TYPES = ['duckdns', 'dyndns2', 'freedns'];
 
 // Collapse a response body to a short, safe snippet for error messages — never
 // dump a full HTML error page (e.g. a provider's 503 page) into the log.
@@ -108,6 +108,32 @@ async function updateDynDns2(p, { ipv4, ipv6 }) {
   return { ok: false, status: 'error', detail: `unexpected response: ${shorten(r.body)}` };
 }
 
+// --- FreeDNS (afraid.org): GET the per-host random-token update URL ---
+// The token identifies the host; we pass &address=<ip> to set a specific IP.
+async function updateFreeDns(p, { ipv4, ipv6 }) {
+  if (!p.token) return { ok: false, status: 'error', detail: 'no update token/URL configured' };
+
+  const t = p.token.trim();
+  const isUrl = /^https?:\/\//i.test(t);
+  let url = isUrl ? t : `${p.server || 'https://freedns.afraid.org/dynamic/update.php'}?${t}`;
+  const ip = ipv4 || ipv6;
+  if (ip) url += (url.includes('?') ? '&' : '?') + 'address=' + encodeURIComponent(ip);
+
+  const label = p.hostname || p.label || 'host';
+  const r = await httpGet(url);
+  if (r.error) return { ok: false, status: 'error', detail: r.error };
+  if (!r.httpOk) return { ok: false, status: 'error', detail: `FreeDNS server error (HTTP ${r.status})` };
+
+  // "ERROR: Address x has not changed." → no-op; "Updated <host> to <ip>" → changed.
+  if (/has not changed/i.test(r.body)) {
+    return { ok: true, status: 'unchanged', detail: `FreeDNS ${label} already ${ip || '(current)'}` };
+  }
+  if (/^updated/i.test(r.body.trim())) {
+    return { ok: true, status: 'updated', detail: `FreeDNS ${label} → ${ip || '(current)'}` };
+  }
+  return { ok: false, status: 'error', detail: `FreeDNS: ${shorten(r.body)}` };
+}
+
 // Dispatch by provider type. `p` is a normalized ddns_providers entry.
 export async function updateDdnsProvider(p, ips) {
   switch (p.type) {
@@ -115,6 +141,8 @@ export async function updateDdnsProvider(p, ips) {
       return updateDuckDns(p, ips);
     case 'dyndns2':
       return updateDynDns2(p, ips);
+    case 'freedns':
+      return updateFreeDns(p, ips);
     default:
       return { ok: false, status: 'error', detail: `unknown provider type: ${p.type}` };
   }
