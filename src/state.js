@@ -46,6 +46,13 @@ export function setRecords(records) {
   state.records = records;
 }
 
+// Drop dashboard records whose FQDN is no longer configured, so deleting a zone
+// (or subdomain / WAF list / DDNS provider) clears its rows immediately instead
+// of waiting for the next run.
+export function pruneRecords(keepFqdns) {
+  state.records = state.records.filter((r) => keepFqdns.has(r.fqdn));
+}
+
 export function finishRun({ result, message }) {
   state.lastRunAt = new Date().toISOString();
   state.lastRunResult = result;
