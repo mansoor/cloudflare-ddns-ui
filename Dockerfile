@@ -14,6 +14,12 @@ FROM node:20-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
+# gosu lets the entrypoint drop from root to the node user after fixing volume
+# permissions.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends gosu \
+  && rm -rf /var/lib/apt/lists/*
+
 # Install production dependencies only
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
@@ -22,6 +28,8 @@ RUN npm install --omit=dev && npm cache clean --force
 COPY src ./src
 COPY web ./web
 COPY --from=cssbuild /app/public ./public
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Data volume for config + secrets
 RUN mkdir -p /data && chown -R node:node /data /app
@@ -30,5 +38,7 @@ ENV PORT=8080
 VOLUME ["/data"]
 EXPOSE 8080
 
-USER node
+# Start as root so the entrypoint can chown the (possibly root-owned) /data bind
+# mount, then it re-execs the app as the unprivileged node user.
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "src/server.js"]
