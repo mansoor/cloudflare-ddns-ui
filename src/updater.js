@@ -18,6 +18,23 @@ function buildFqdn(subName, zoneName) {
   return `${n}.${zoneName}`;
 }
 
+// The set of record FQDNs the config currently manages — used to prune stale
+// dashboard rows the moment something is removed. Mirrors how runUpdate labels
+// each record's `fqdn`.
+export function expectedRecordFqdns(cfg) {
+  const set = new Set();
+  for (const acc of cfg.cloudflare || []) {
+    if (!acc.zone_name) continue;
+    for (const sub of acc.subdomains || []) set.add(buildFqdn(sub.name, acc.zone_name));
+  }
+  for (const w of cfg.waf_lists || []) if (w.list_name) set.add(w.list_name);
+  for (const p of cfg.ddns_providers || []) {
+    const host = p.type === 'dyndns2' ? p.hostname : p.domains;
+    if (host) set.add(host);
+  }
+  return set;
+}
+
 // Decide whether an existing record already matches what we want.
 function recordMatches(existing, { content, proxied, ttl }) {
   // When proxied, Cloudflare forces ttl to 1 (auto); don't churn on that.

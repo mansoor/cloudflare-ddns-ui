@@ -7,7 +7,8 @@ import {
   IP_PROVIDERS_V6,
 } from '../config.js';
 import { listZones, listAccountLists } from '../cloudflare.js';
-import { getState } from '../state.js';
+import { getState, pruneRecords } from '../state.js';
+import { expectedRecordFqdns } from '../updater.js';
 import { applySchedule, setPaused, triggerNow } from '../scheduler.js';
 import { REDACTED_TOKEN } from '../config.js';
 import { sendNotification } from '../notify.js';
@@ -57,6 +58,8 @@ export default async function apiRoutes(app) {
     const merged = mergeIncomingConfig(existing, incoming);
     await saveConfig(merged);
     applySchedule(merged);
+    // Immediately drop dashboard rows for anything no longer configured.
+    pruneRecords(expectedRecordFqdns(merged));
     return { ok: true, config: redactConfig(merged) };
   });
 
