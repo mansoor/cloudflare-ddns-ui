@@ -1,0 +1,28 @@
+{
+  "name": "cloudflare-ddns-ui",
+  "version": "1.0.0",
+  "description": "Self-hosted Cloudflare dynamic DNS updater with a Tailwind web UI",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "build:css": "tailwindcss -i ./web/css/tailwind.src.css -o ./public/app.css --minify",
+    "watch:css": "tailwindcss -i ./web/css/tailwind.src.css -o ./public/app.css --watch"
+  },
+  "dependencies": {
+    "@fastify/formbody": "^7.4.0",
+    "@fastify/secure-session": "^7.5.1",
+    "@fastify/static": "^6.12.0",
+    "bcryptjs": "^2.4.3",
+    "fastify": "^4.28.1",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "pino-pretty": "^11.2.2",
+    "tailwindcss": "^3.4.10"
+  }
+}

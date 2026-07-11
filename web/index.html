@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cloudflare DDNS UI</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌩️</text></svg>" />
+    <script>
+      // Apply the saved theme before paint to avoid a flash of the wrong theme.
+      (function () {
+        try {
+          var t = localStorage.getItem('theme') || 'system';
+          var dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="/public/app.css" />
+  </head>
+  <body class="h-full bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div class="min-h-full">
+      <!-- Header -->
+      <header class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
+          <div class="flex items-center gap-2">
+            <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-xl">🌩️</span>
+            <div>
+              <h1 class="text-sm font-semibold leading-tight">Cloudflare DDNS</h1>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Dynamic DNS updater</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <div id="theme-toggle" class="flex items-center gap-0.5 rounded-lg border border-slate-200 p-0.5 dark:border-slate-700" role="group" aria-label="Theme">
+              <button type="button" data-theme="light" class="theme-btn rounded-md p-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" title="Light" aria-label="Light">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+              </button>
+              <button type="button" data-theme="dark" class="theme-btn rounded-md p-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" title="Dark" aria-label="Dark">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" /></svg>
+              </button>
+              <button type="button" data-theme="system" class="theme-btn rounded-md p-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" title="System" aria-label="System">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" /></svg>
+              </button>
+            </div>
+            <span id="user-label" class="hidden text-sm text-slate-500 sm:inline dark:text-slate-400"></span>
+            <button id="logout-btn" class="btn-ghost text-sm">Sign out</button>
+          </div>
+        </div>
+        <nav class="mx-auto max-w-5xl px-4">
+          <div class="flex gap-1">
+            <button data-tab="dashboard" class="tab-btn -mb-px border-b-2 px-4 py-2 text-sm font-medium">Dashboard</button>
+            <button data-tab="zones" class="tab-btn -mb-px border-b-2 px-4 py-2 text-sm font-medium">Zones</button>
+            <button data-tab="waf" class="tab-btn -mb-px border-b-2 px-4 py-2 text-sm font-medium">WAF</button>
+            <button data-tab="settings" class="tab-btn -mb-px border-b-2 px-4 py-2 text-sm font-medium">Settings</button>
+          </div>
+        </nav>
+      </header>
+
+      <main class="mx-auto max-w-5xl px-4 py-6">
+        <!-- ============ DASHBOARD ============ -->
+        <section id="tab-dashboard" class="space-y-6">
+          <!-- Status cards -->
+          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div class="card p-4">
+              <p class="text-xs uppercase tracking-wide text-slate-400">Current IPv4</p>
+              <p id="stat-ipv4" class="mt-1 truncate font-mono text-lg font-semibold">—</p>
+            </div>
+            <div class="card p-4">
+              <p class="text-xs uppercase tracking-wide text-slate-400">Current IPv6</p>
+              <p id="stat-ipv6" class="mt-1 truncate font-mono text-lg font-semibold">—</p>
+            </div>
+            <div class="card p-4">
+              <p class="text-xs uppercase tracking-wide text-slate-400">Last update</p>
+              <p id="stat-last" class="mt-1 text-lg font-semibold">—</p>
+              <p id="stat-last-result" class="text-xs text-slate-500"></p>
+            </div>
+            <div class="card p-4">
+              <p class="text-xs uppercase tracking-wide text-slate-400">Next run</p>
+              <p id="stat-next" class="mt-1 text-lg font-semibold">—</p>
+              <p id="stat-interval" class="text-xs text-slate-500"></p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <button id="update-now" class="btn-primary">
+                <span id="update-now-label">Update now</span>
+              </button>
+              <span id="scheduler-badge" class="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Scheduler: —</span>
+              <span id="run-msg" class="text-sm text-slate-500"></span>
+            </div>
+            <button id="pause-toggle" class="btn-secondary">Pause scheduler</button>
+          </div>
+
+          <!-- Records table -->
+          <div class="card overflow-hidden">
+            <div class="border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+              <h2 class="text-sm font-semibold">Managed records</h2>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400 dark:bg-slate-900">
+                  <tr>
+                    <th class="px-4 py-2 font-medium">Name</th>
+                    <th class="px-4 py-2 font-medium">Type</th>
+                    <th class="px-4 py-2 font-medium">Proxied</th>
+                    <th class="px-4 py-2 font-medium">Status</th>
+                    <th class="px-4 py-2 font-medium">Detail</th>
+                  </tr>
+                </thead>
+                <tbody id="records-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                  <tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records yet — run an update.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Activity log -->
+          <div class="card overflow-hidden">
+            <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-700">
+              <h2 class="text-sm font-semibold">Activity log</h2>
+              <span class="text-xs text-slate-400">auto-refreshes</span>
+            </div>
+            <div id="log-list" class="max-h-80 divide-y divide-slate-100 overflow-y-auto font-mono text-xs dark:divide-slate-700/50">
+              <div class="px-4 py-6 text-center text-slate-400">No activity yet.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ ZONES ============ -->
+        <section id="tab-zones" class="hidden space-y-6">
+          <div class="card p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <div>
+                <h2 class="text-sm font-semibold">Cloudflare zones</h2>
+                <p class="text-xs text-slate-500">Add a zone, verify your API token, then choose subdomains to keep in sync.</p>
+              </div>
+              <button type="button" id="add-account" class="btn-add text-sm">+ Add zone</button>
+            </div>
+            <div id="accounts"></div>
+            <div id="accounts-empty" class="hidden rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-600">
+              No zones yet. Click <b>+ Add zone</b> to connect your first Cloudflare zone.
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Open a zone to <b>Save</b> or <b>Delete</b> it. Each zone saves independently.</p>
+          </div>
+          <p id="zones-msg" class="h-5 text-sm"></p>
+        </section>
+
+        <!-- ============ WAF ============ -->
+        <section id="tab-waf" class="hidden space-y-6">
+          <div class="card p-4">
+            <div class="mb-3 flex items-center justify-between">
+              <div>
+                <h2 class="text-sm font-semibold">Cloudflare IP Lists (WAF)</h2>
+                <p class="text-xs text-slate-500">Keep an account-level IP List updated with your current IP, to reference in WAF/firewall rules. Token needs <b>Account → Account Filter Lists → Edit</b>.</p>
+              </div>
+              <button type="button" id="add-waf" class="btn-add text-sm">+ Add list</button>
+            </div>
+            <div id="waf-lists"></div>
+            <div id="waf-empty" class="hidden rounded-lg border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-600">
+              No lists yet. Click <b>+ Add list</b> to keep a Cloudflare IP List in sync with your IP.
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Only items tagged with the list's comment are managed — your manual entries are left alone.</p>
+          </div>
+          <p id="waf-msg" class="h-5 text-sm"></p>
+        </section>
+
+        <!-- ============ SETTINGS ============ -->
+        <section id="tab-settings" class="hidden space-y-6">
+          <form id="settings-form" class="space-y-6">
+            <!-- Record options -->
+            <div class="card space-y-4 p-4">
+              <h2 class="text-sm font-semibold">Record options</h2>
+              <div class="grid gap-4 sm:grid-cols-3">
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" id="opt-a" class="h-4 w-4 rounded border-slate-300" />
+                  Manage <b>A</b> (IPv4)
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" id="opt-aaaa" class="h-4 w-4 rounded border-slate-300" />
+                  Manage <b>AAAA</b> (IPv6)
+                </label>
+                <div>
+                  <label class="label" for="opt-ttl">TTL (seconds, 1 = auto)</label>
+                  <input class="input" id="opt-ttl" type="number" min="1" max="86400" />
+                </div>
+              </div>
+            </div>
+
+            <!-- IP providers -->
+            <div class="card space-y-4 p-4">
+              <h2 class="text-sm font-semibold">Public IP detection</h2>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="label" for="ip4-provider">IPv4 provider</label>
+                  <select class="input" id="ip4-provider"></select>
+                  <input class="input mt-2 hidden" id="ip4-custom" placeholder="https://your-endpoint/ip" />
+                </div>
+                <div>
+                  <label class="label" for="ip6-provider">IPv6 provider</label>
+                  <select class="input" id="ip6-provider"></select>
+                  <input class="input mt-2 hidden" id="ip6-custom" placeholder="https://your-endpoint/ip" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Schedule + advanced -->
+            <div class="card space-y-4 p-4">
+              <h2 class="text-sm font-semibold">Schedule &amp; advanced</h2>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="label" for="opt-interval">Update every (minutes)</label>
+                  <input class="input" id="opt-interval" type="number" min="1" max="1440" />
+                </div>
+                <label class="flex items-start gap-2 text-sm sm:pt-6">
+                  <input type="checkbox" id="opt-purge" class="mt-0.5 h-4 w-4 rounded border-slate-300" />
+                  <span>
+                    <b>Purge unknown records</b>
+                    <span class="block text-xs text-slate-500">Deletes A/AAAA records in each zone that aren't listed in the Zones tab. Use with care.</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Notifications -->
+            <div class="card space-y-4 p-4">
+              <div>
+                <h2 class="text-sm font-semibold">Notifications</h2>
+                <p class="text-xs text-slate-500">Get alerted via Discord, Slack, or a generic webhook/ntfy.</p>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-3">
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" id="notif-failure" class="h-4 w-4 rounded border-slate-300" />
+                  On update <b>failures</b>
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" id="notif-ipchange" class="h-4 w-4 rounded border-slate-300" />
+                  On <b>IP change</b>
+                </label>
+                <label class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" id="notif-success" class="h-4 w-4 rounded border-slate-300" />
+                  On <b>successful changes</b>
+                </label>
+              </div>
+              <div class="border-t border-slate-200 pt-3 dark:border-slate-700">
+                <div class="mb-2 flex items-center justify-between">
+                  <label class="label mb-0">Channels</label>
+                  <button type="button" id="add-channel" class="btn-add text-xs">+ Add channel</button>
+                </div>
+                <div id="channels"></div>
+                <div id="channels-empty" class="hidden rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-xs text-slate-500 dark:border-slate-600">
+                  No channels yet. Add one to receive notifications.
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button type="submit" class="btn-primary" id="save-btn">Save settings</button>
+              <span id="save-msg" class="text-sm"></span>
+            </div>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <!-- Custom confirmation dialog -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div class="card w-full max-w-sm p-5" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <h3 id="confirm-title" class="text-base font-semibold">Are you sure?</h3>
+        <p id="confirm-message" class="mt-2 text-sm text-slate-600 dark:text-slate-300"></p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button type="button" id="confirm-cancel" class="btn-secondary">Cancel</button>
+          <button type="button" id="confirm-ok" class="btn-danger">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account row template (collapsible) -->
+    <template id="account-template">
+      <div class="account mb-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700" data-id="">
+        <!-- Summary header: click to expand/collapse -->
+        <div class="acc-header flex cursor-pointer select-none items-center justify-between gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40">
+          <div class="flex min-w-0 items-center gap-2.5">
+            <svg class="acc-chevron h-4 w-4 shrink-0 text-slate-400 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+            </svg>
+            <div class="min-w-0">
+              <p class="acc-summary-title truncate text-sm font-medium">New zone</p>
+              <p class="acc-summary-meta truncate text-xs text-slate-500">Not configured yet</p>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <span class="acc-summary-badge badge bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">no token</span>
+            <button type="button" class="acc-update badge bg-brand-100 text-brand-700 hover:bg-brand-500 hover:text-white dark:bg-brand-700/30 dark:text-brand-100" title="Update just this zone now">Update</button>
+          </div>
+        </div>
+        <!-- Collapsible body -->
+        <div class="acc-body hidden border-t border-slate-200 p-3 dark:border-slate-700">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div class="sm:col-span-2">
+              <label class="label">Label</label>
+              <input class="input acc-label" placeholder="Label (e.g. example.com)" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label">API token <span class="text-slate-400">(Edit DNS scope)</span></label>
+              <div class="flex gap-2">
+                <input class="input acc-token" type="password" placeholder="Cloudflare API token" autocomplete="off" />
+                <button type="button" class="btn-secondary whitespace-nowrap acc-verify">Verify &amp; load zones</button>
+              </div>
+              <p class="acc-verify-msg mt-1 text-xs"></p>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label">Zone</label>
+              <select class="input acc-zone">
+                <option value="">— verify token to load zones —</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <div class="mb-1 flex items-center justify-between">
+                <label class="label mb-0">Subdomains</label>
+                <button type="button" class="btn-add text-xs acc-add-sub">+ Add subdomain</button>
+              </div>
+              <p class="mb-2 text-xs text-slate-500">Use an empty name or <code>@</code> for the root domain, <code>*</code> for wildcard.</p>
+              <div class="acc-subs space-y-2"></div>
+            </div>
+          </div>
+          <!-- Per-card actions -->
+          <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">
+            <button type="button" class="btn-danger text-sm acc-delete">Delete zone</button>
+            <div class="flex items-center gap-2">
+              <span class="acc-save-msg text-xs"></span>
+              <button type="button" class="btn-primary text-sm acc-save">Save zone</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- WAF list card template (collapsible) -->
+    <template id="waf-template">
+      <div class="waf-card mb-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700" data-id="">
+        <div class="acc-header flex cursor-pointer select-none items-center justify-between gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40">
+          <div class="flex min-w-0 items-center gap-2.5">
+            <svg class="acc-chevron h-4 w-4 shrink-0 text-slate-400 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+            </svg>
+            <div class="min-w-0">
+              <p class="waf-summary-title truncate text-sm font-medium">New list</p>
+              <p class="waf-summary-meta truncate text-xs text-slate-500">Not configured yet</p>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <span class="waf-summary-badge badge bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">no token</span>
+            <button type="button" class="waf-update badge bg-brand-100 text-brand-700 hover:bg-brand-500 hover:text-white dark:bg-brand-700/30 dark:text-brand-100" title="Update just this list now">Update</button>
+          </div>
+        </div>
+        <div class="acc-body hidden border-t border-slate-200 p-3 dark:border-slate-700">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label class="label">Label</label>
+              <input class="input waf-label" placeholder="home-allowlist" />
+            </div>
+            <div>
+              <label class="label">Managed item comment</label>
+              <input class="input waf-comment" placeholder="cf-ddns-ui" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label">Account ID</label>
+              <input class="input waf-account" placeholder="Cloudflare account ID" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label">API token <span class="text-slate-400">(Account Filter Lists → Edit)</span></label>
+              <div class="flex gap-2">
+                <input class="input waf-token" type="password" placeholder="Cloudflare API token" autocomplete="off" />
+                <button type="button" class="btn-secondary whitespace-nowrap waf-verify">Verify &amp; load lists</button>
+              </div>
+              <p class="waf-verify-msg mt-1 text-xs"></p>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="label">List</label>
+              <select class="input waf-list">
+                <option value="">— verify token to load lists —</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">
+            <button type="button" class="btn-danger text-sm waf-delete">Delete list</button>
+            <button type="button" class="btn-primary text-sm waf-save">Save list</button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Notification channel card template (collapsible) -->
+    <template id="channel-template">
+      <div class="channel-card mb-3 overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700" data-id="">
+        <div class="acc-header flex cursor-pointer select-none items-center justify-between gap-3 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40">
+          <div class="flex min-w-0 items-center gap-2.5">
+            <svg class="acc-chevron h-4 w-4 shrink-0 text-slate-400 transition-transform" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+            </svg>
+            <div class="min-w-0">
+              <p class="ch-summary-title truncate text-sm font-medium">New channel</p>
+              <p class="ch-summary-meta truncate text-xs text-slate-500">webhook</p>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <span class="ch-summary-badge badge bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">disabled</span>
+          </div>
+        </div>
+        <div class="acc-body hidden border-t border-slate-200 p-3 dark:border-slate-700">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label class="label">Type</label>
+              <select class="input ch-type">
+                <option value="discord">Discord</option>
+                <option value="slack">Slack</option>
+                <option value="webhook">Generic webhook / ntfy</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Label</label>
+              <input class="input ch-label" placeholder="e.g. Home server" />
+            </div>
+            <label class="sm:col-span-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" class="ch-enabled h-4 w-4 rounded border-slate-300" /> Enabled
+            </label>
+            <div class="ch-field-webhookurl sm:col-span-2">
+              <label class="label">Webhook URL</label>
+              <input class="input ch-webhook-url" type="password" placeholder="https://discord.com/api/webhooks/… or hooks.slack.com/…" autocomplete="off" />
+            </div>
+            <div class="ch-field-url sm:col-span-2 hidden">
+              <label class="label">URL</label>
+              <input class="input ch-url" placeholder="https://ntfy.sh/mytopic" />
+            </div>
+            <div class="ch-field-format hidden">
+              <label class="label">Payload</label>
+              <select class="input ch-format">
+                <option value="json">JSON</option>
+                <option value="text">Plain text (ntfy)</option>
+              </select>
+            </div>
+            <div class="ch-field-auth hidden">
+              <label class="label">Auth header (optional)</label>
+              <input class="input ch-auth" type="password" placeholder="Authorization: Bearer …" autocomplete="off" />
+            </div>
+          </div>
+          <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">
+            <button type="button" class="btn-danger text-sm ch-delete">Delete</button>
+            <div class="flex items-center gap-2">
+              <span class="ch-msg text-xs"></span>
+              <button type="button" class="btn-secondary text-sm ch-test">Send test</button>
+              <button type="button" class="btn-primary text-sm ch-save">Save channel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Subdomain row template -->
+    <template id="sub-template">
+      <div class="sub flex items-center gap-2">
+        <input class="input sub-name" placeholder="www (or empty for root)" />
+        <label class="flex items-center gap-1 whitespace-nowrap text-xs text-slate-500">
+          <input type="checkbox" class="sub-proxied h-4 w-4 rounded border-slate-300" /> Proxied
+        </label>
+        <button type="button" class="btn-ghost text-sm text-red-600 sub-remove">✕</button>
+      </div>
+    </template>
+
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>

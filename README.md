@@ -1,0 +1,179 @@
+# Cloudflare DDNS UI
+
+A small self-hosted **dynamic DNS updater for Cloudflare** with a clean web UI — inspired by
+[timothymiller/cloudflare-ddns](https://github.com/timothymiller/cloudflare-ddns), but you configure
+everything (API token, zones, subdomains, A/AAAA records, proxying, TTL, IP providers, schedule)
+through a **Tailwind** web form instead of editing `config.json` by hand.
+
+It detects your public IPv4/IPv6 on a schedule and creates or updates the matching Cloudflare
+`A` / `AAAA` records — so a home server on a dynamic IP stays reachable via your domain.
+
+## Features
+
+- 🖥️ **Web UI** — no JSON editing; add zones and subdomains through forms
+- 🔐 **Login-protected** — single admin account (session cookie + bcrypt)
+- 🌐 **IPv4 + IPv6** — independent providers (`cloudflare.trace`, `ipify`, custom URL, or off)
+- ⏱️ **Scheduler** — configurable interval, runs on startup, "Update now" button, and a **Pause/Resume** toggle (the paused state persists across restarts)
+- 🎯 **Per-zone update** — an "Update" badge on each zone card syncs just that one zone on demand
+- 🛡️ **WAF / IP Lists** — keep a Cloudflare account-level IP List updated with your current IP, to reference in firewall rules
+- 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, on update failures, IP changes, and/or successful record changes (each toggleable)
+- 🎨 **Light / Dark / System** theme
+- ✅ **Idempotent** — only touches records that actually changed
+- 🔎 **Live dashboard** — current IPs, per-record status, activity log
+- 🐳 **Docker-ready** — published image, config persisted to a volume
+
+## Quick start
+
+The image is published to GitHub Container Registry — you don't need the source, just Docker.
+
+### Option A — `docker run`
+
+```bash
+docker run -d \
+  --name cloudflare-ddns-ui \
+  -p 8080:8080 \
+  -e ADMIN_USERNAME=admin \
+  -e ADMIN_PASSWORD=change-me \
+  -v "$PWD/data:/data" \
+  --restart unless-stopped \
+  ghcr.io/mansoor/cloudflare-ddns-ui:latest
+```
+
+### Option B — Docker Compose (recommended)
+
+Save this as `docker-compose.yml`, then run `docker compose up -d`:
+
+```yaml
+services:
+  cloudflare-ddns-ui:
+    image: ghcr.io/mansoor/cloudflare-ddns-ui:latest
+    container_name: cloudflare-ddns-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: change-me      # leave blank to get a random one in the logs
+      SESSION_SECRET: ""             # leave blank to auto-generate (persisted in ./data)
+    volumes:
+      - ./data:/data
+```
+
+```bash
+docker compose up -d
+```
+
+Then open <http://localhost:8080>. If you left `ADMIN_PASSWORD` blank, grab the generated one:
+
+```bash
+docker compose logs | grep -A2 "Generated a temporary password"
+```
+
+Config and secrets persist in `./data`. Pin a version with `:v1.0.0` instead of `:latest`.
+
+> If the pull fails with `unauthorized`/`denied`, the GHCR package is private — either make it
+> public (repo → **Packages** → package → **Package settings** → change visibility), or authenticate
+> first: `echo <token> | docker login ghcr.io -u mansoor --password-stdin`.
+
+## Configuration (environment)
+
+| Variable         | Default   | Description |
+|------------------|-----------|-------------|
+| `PORT`           | `8080`    | HTTP port for the UI |
+| `ADMIN_USERNAME` | `admin`   | Admin login name |
+| `ADMIN_PASSWORD` | *(random)*| Admin password. If unset, a random one is generated and logged once on boot |
+| `SESSION_SECRET` | *(random)*| Cookie-signing secret. If unset, one is generated and saved to `data/.session-secret` |
+| `DATA_DIR`       | `/data`   | Where `config.json` and secrets are stored (container default `/data`) |
+
+All DNS configuration lives in the UI (persisted to `data/config.json`).
+
+## Getting a Cloudflare API token
+
+1. Cloudflare dashboard → **My Profile → API Tokens → Create Token**.
+2. Use the **Edit zone DNS** template (or a custom token with `Zone → DNS → Edit`).
+3. Scope it to the zone(s) you want to manage.
+4. In the UI: **Zones → Add zone**, paste the token, click **Verify & load zones**, pick the zone,
+   add subdomains, and **Save**.
+
+The token is stored server-side in `data/config.json` and is never sent back to the browser — the
+UI only shows the last 4 characters.
+
+## WAF / Cloudflare IP Lists
+
+The **WAF** tab keeps an account-level Cloudflare **IP List** updated with your current public IP,
+so you can reference that list in a WAF/firewall rule to allow access from your dynamic IP.
+
+1. Create an IP List in the Cloudflare dashboard (Account Home → Manage Account → Configurations → Lists).
+2. Create a token with **Account → Account Filter Lists → Edit**.
+3. In the UI: **WAF → Add list**, paste the Account ID + token, **Verify & load lists**, pick the list, Save.
+
+Only list items tagged with the list's **managed comment** (default `cf-ddns-ui`) are touched — any
+entries you added manually are left alone.
+
+## Notifications
+
+Add channels under **Settings → Notifications** and choose which events fire (each is toggleable):
+**update failures**, **IP address change**, **successful record changes**.
+
+| Channel | What you provide |
+|---|---|
+| **Discord** | Incoming **webhook URL** (Server Settings → Integrations → Webhooks) |
+| **Slack** | Incoming **webhook URL** |
+| **Generic webhook / ntfy** | A **URL** + payload format: `JSON` (Gotify, Home Assistant, custom) or `Plain text` (ntfy topic). Optional `auth_header` like `Authorization: Bearer …` |
+
+Use **Send test** on a saved channel to confirm it works. IP-change alerts fire once per change
+(the last IP is persisted to `data/runtime.json`) and never on first-ever detection.
+
+## Notes & limitations
+
+- Manages **A / AAAA** records and account **IP Lists**. Load balancers are still out of scope.
+- Notifications cover Discord, Slack, and generic webhook/ntfy (the webhook channel also covers
+  Gotify / Home Assistant / custom endpoints). Telegram/Pushover aren't built in.
+- WAF list-item changes use Cloudflare's async bulk API — the UI reports "submitted".
+- Single admin login (no multi-user / RBAC).
+- Tokens and webhook URLs are stored in plaintext in `data/config.json` (same trust model as the
+  reference app's config file) and redacted over the API. Keep the `data` directory and login private.
+
+## How it works
+
+```
+IP provider (trace/ipify/custom) ──▶ current public IP
+                                         │
+config.json (zones + subdomains) ──▶ updater ──▶ Cloudflare API (A/AAAA upsert)
+                                         │
+                                    scheduler (cron)  ◀── "Update now"
+```
+
+- `src/ip.js` — public IP detection
+- `src/cloudflare.js` — Cloudflare API v4 client (DNS records + account IP lists)
+- `src/updater.js` — the sync engine (create / update / unchanged / optional purge / WAF / notifications)
+- `src/scheduler.js` — cron loop, reschedules when you save settings
+- `src/notify.js` — Discord / Slack / webhook senders · `src/runtime.js` — last-IP persistence
+- `src/routes/api.js` — REST API behind session auth
+- `web/` — Tailwind UI (login + dashboard/zones/waf/settings)
+
+## Build from source
+
+Clone the repo, then either build the image locally with the bundled compose file (it builds from
+the `Dockerfile` instead of pulling from GHCR):
+
+```bash
+docker compose up --build -d
+```
+
+…or run it directly with **Node.js 20+**:
+
+```bash
+npm install
+npm run build:css      # compile Tailwind -> public/app.css
+npm start              # or: npm run dev  (auto-reload + pretty logs)
+```
+
+During UI work, watch the CSS in a second terminal: `npm run watch:css`.
+
+Releases are cut by pushing a `v*` tag — the [`docker-release`](.github/workflows/docker-release.yml)
+workflow builds and publishes `ghcr.io/mansoor/cloudflare-ddns-ui` with `:vX.Y.Z` and `:latest` tags.
+
+## License
+
+MIT

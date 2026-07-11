@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium
+      transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500/50 disabled:opacity-50
+      disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600;
+  }
+  .btn-secondary {
+    @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50
+      dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700;
+  }
+  .btn-ghost {
+    @apply btn text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  /* "Add" actions — Cloudflare-style blue */
+  .btn-add {
+    @apply btn text-white;
+    background-color: #1668dc;
+  }
+  .btn-add:hover {
+    background-color: #0f52ba;
+  }
+  .card {
+    @apply rounded-xl border border-slate-200 bg-white shadow-sm
+      dark:border-slate-700 dark:bg-slate-800;
+  }
+  .input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900
+      placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1
+      focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}
