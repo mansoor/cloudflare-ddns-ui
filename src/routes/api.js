@@ -14,6 +14,7 @@ import { REDACTED_TOKEN } from '../config.js';
 import { sendNotification } from '../notify.js';
 import { updateDdnsProvider } from '../ddns.js';
 import { features } from '../features.js';
+import { getVersionInfo } from '../version.js';
 
 export default async function apiRoutes(app) {
   // --- Auth ---
@@ -93,6 +94,9 @@ export default async function apiRoutes(app) {
   app.get('/api/status', auth, async () => getState());
 
   app.get('/api/logs', auth, async () => ({ log: getState().log }));
+
+  // --- Version + update check (for the footer) ---
+  app.get('/api/version', auth, async () => getVersionInfo());
 
   // --- Manual trigger (all zones + WAF lists) ---
   app.post('/api/update-now', auth, async () => {

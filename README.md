@@ -64,6 +64,7 @@ services:
       ADMIN_PASSWORD: change-me                # leave blank to get a random one in the logs
       SESSION_SECRET: ""                       # leave blank to auto-generate (persisted in ./data)
       ENABLE_OTHER_DDNS: "false"               # set "true" for the DuckDNS / FreeDNS / DynDNS2 tab
+      # DISABLE_UPDATE_CHECK: "true"           # optional: skip the footer's GitHub update check
     volumes:
       - ./data:/data
 ```
@@ -91,6 +92,7 @@ problem? See [Troubleshooting](#troubleshooting).
 | `SESSION_SECRET` | *(random)*| Cookie-signing secret. If unset, one is generated and saved to `data/.session-secret` |
 | `DATA_DIR`       | `/data`   | Where `config.json` and secrets are stored (container default `/data`) |
 | `ENABLE_OTHER_DDNS` | *(off)* | Set truthy to enable the optional **Other DDNS** tab (DuckDNS / FreeDNS / DynDNS2). Alias: `ENABLE_NON_CLOUDFLARE_DDNS` |
+| `DISABLE_UPDATE_CHECK` | *(off)* | Set truthy to stop the footer from checking GitHub for a newer release (for air-gapped installs) |
 
 All DNS configuration lives in the UI (persisted to `data/config.json`).
 

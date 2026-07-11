@@ -1123,22 +1123,96 @@ function renderRecords(records) {
     .join('');
 }
 
+// runIds the user has expanded — kept across the 5s auto-refresh so an open
+// group doesn't snap shut under them.
+const EXPANDED_RUNS = new Set();
+
+function logRow(e, indent) {
+  const t = new Date(e.at).toLocaleTimeString();
+  const style = LOG_STYLES[e.level] || LOG_STYLES.info;
+  return `<div class="flex gap-3 px-4 py-1.5 ${indent ? 'pl-11' : ''}">
+    <span class="shrink-0 text-slate-400">${t}</span>
+    <span class="${style}">${esc(e.message)}</span>
+  </div>`;
+}
+
 function renderLog(log) {
   const wrap = $('#log-list');
   if (!log || !log.length) {
     wrap.innerHTML = '<div class="px-4 py-6 text-center text-slate-400">No activity yet.</div>';
     return;
   }
-  wrap.innerHTML = log
-    .map((e) => {
-      const t = new Date(e.at).toLocaleTimeString();
-      const style = LOG_STYLES[e.level] || LOG_STYLES.info;
-      return `<div class="flex gap-3 px-4 py-1.5">
-        <span class="shrink-0 text-slate-400">${t}</span>
-        <span class="${style}">${esc(e.message)}</span>
+
+  // Group consecutive entries that share a runId into one collapsible update.
+  const groups = [];
+  for (const e of log) {
+    const last = groups[groups.length - 1];
+    if (e.runId && last && last.runId === e.runId) last.entries.push(e);
+    else groups.push({ runId: e.runId || null, entries: [e] });
+  }
+
+  wrap.innerHTML = groups
+    .map((g) => {
+      // Ungrouped or single-line entries render flat (no disclosure).
+      if (!g.runId || g.entries.length < 2) {
+        return `<div>${g.entries.map((e) => logRow(e, false)).join('')}</div>`;
+      }
+      // The "Update finished/failed" line heads the group; the rest are details
+      // shown oldest-first when expanded.
+      const header = g.entries.find((e) => e.phase === 'end') || g.entries[0];
+      const details = g.entries.filter((e) => e !== header).reverse();
+      const open = EXPANDED_RUNS.has(g.runId);
+      const t = new Date(header.at).toLocaleTimeString();
+      const style = LOG_STYLES[header.level] || LOG_STYLES.info;
+      const n = details.length;
+      return `<div class="log-group" data-run="${esc(g.runId)}">
+        <button type="button" class="log-head flex w-full items-center gap-2 px-4 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-slate-700/40">
+          <svg class="log-chevron h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-90' : ''}" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
+          <span class="shrink-0 text-slate-400">${t}</span>
+          <span class="${style} truncate">${esc(header.message)}</span>
+          <span class="ml-auto shrink-0 text-[10px] uppercase tracking-wide text-slate-400">${n} step${n === 1 ? '' : 's'}</span>
+        </button>
+        <div class="log-details ${open ? '' : 'hidden'} bg-slate-50/60 dark:bg-slate-900/40">
+          ${details.map((e) => logRow(e, true)).join('')}
+        </div>
       </div>`;
     })
     .join('');
+
+  // innerHTML was replaced, so (re)wire the disclosure toggles each render.
+  wrap.querySelectorAll('.log-group').forEach((el) => {
+    const runId = el.dataset.run;
+    el.querySelector('.log-head').addEventListener('click', () => {
+      const details = el.querySelector('.log-details');
+      const collapsed = details.classList.toggle('hidden');
+      el.querySelector('.log-chevron').classList.toggle('rotate-90', !collapsed);
+      if (collapsed) EXPANDED_RUNS.delete(runId);
+      else EXPANDED_RUNS.add(runId);
+    });
+  });
+}
+
+async function loadVersion() {
+  try {
+    const v = await api('/api/version');
+    if (v.repoUrl) {
+      $('#footer-repo').href = v.repoUrl;
+      $('#footer-license').href = `${v.repoUrl}/blob/main/LICENSE`;
+    }
+    $('#footer-version').textContent = `v${v.current}`;
+    const upd = $('#footer-update');
+    if (v.updateAvailable && v.latest) {
+      $('#footer-update-text').textContent = `Update available: v${v.latest}`;
+      if (v.releasesUrl) upd.href = v.releasesUrl;
+      upd.classList.remove('hidden');
+      upd.classList.add('flex');
+    } else {
+      upd.classList.add('hidden');
+      upd.classList.remove('flex');
+    }
+  } catch {
+    /* footer stays with its default version placeholder */
+  }
 }
 
 function esc(str) {
@@ -1327,6 +1401,7 @@ async function init() {
 
   await loadConfig();
   await refreshStatus();
+  loadVersion();
   setInterval(refreshStatus, 5000);
 }
 

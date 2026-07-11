@@ -298,6 +298,25 @@
           </form>
         </section>
       </main>
+
+      <!-- App footer: license, source, version, and an update hint -->
+      <footer class="mx-auto max-w-5xl px-4 pb-8 pt-2">
+        <div class="flex flex-col items-center gap-2 border-t border-slate-200 pt-4 text-xs text-slate-500 sm:flex-row sm:justify-between dark:border-slate-800 dark:text-slate-400">
+          <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+            <span>🌩️ Cloudflare DDNS UI</span>
+            <span class="text-slate-300 dark:text-slate-600">·</span>
+            <span id="footer-version" title="Installed version">v—</span>
+            <span class="text-slate-300 dark:text-slate-600">·</span>
+            <a id="footer-license" href="https://github.com/mansoor/cloudflare-ddns-ui/blob/main/LICENSE" target="_blank" rel="noopener" class="hover:text-brand-600 hover:underline dark:hover:text-brand-400">MIT License</a>
+            <span class="text-slate-300 dark:text-slate-600">·</span>
+            <a id="footer-repo" href="https://github.com/mansoor/cloudflare-ddns-ui" target="_blank" rel="noopener" class="hover:text-brand-600 hover:underline dark:hover:text-brand-400">GitHub</a>
+          </div>
+          <a id="footer-update" href="https://github.com/mansoor/cloudflare-ddns-ui/releases" target="_blank" rel="noopener" class="hidden items-center gap-1 rounded-full bg-brand-100 px-2.5 py-1 font-medium text-brand-700 hover:bg-brand-500 hover:text-white dark:bg-brand-700/30 dark:text-brand-100 dark:hover:bg-brand-500 dark:hover:text-white">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            <span id="footer-update-text">Update available</span>
+          </a>
+        </div>
+      </footer>
     </div>
 
     <!-- Custom confirmation dialog -->

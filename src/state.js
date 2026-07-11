@@ -59,11 +59,31 @@ export function finishRun({ result, message }) {
   state.lastRunMessage = message || '';
 }
 
-export function log(level, message, meta) {
+// Log grouping: every entry emitted between beginLogRun() and endLogRun() shares
+// a runId, so the UI can collapse a whole update into one row. Runs never overlap
+// (the updater guards on `running`), so a single module-level id is safe.
+let runCounter = 0;
+let currentRunId = null;
+
+export function beginLogRun() {
+  runCounter += 1;
+  currentRunId = `run-${runCounter}`;
+  return currentRunId;
+}
+
+export function endLogRun() {
+  currentRunId = null;
+}
+
+// phase: 'start' | 'end' marks the update's start/finish lines so the UI knows
+// which entry heads the collapsible group.
+export function log(level, message, meta, phase) {
   const entry = {
     at: new Date().toISOString(),
     level, // 'info' | 'success' | 'warn' | 'error'
     message,
+    ...(currentRunId ? { runId: currentRunId } : {}),
+    ...(phase ? { phase } : {}),
     ...(meta ? { meta } : {}),
   };
   state.log.unshift(entry);

@@ -227,7 +227,8 @@ export async function runUpdate(
     return { result: 'error', message: 'DDNS provider not found — save it first', records: [] };
   }
   state.setRunning(true);
-  state.log('info', `Update started (${trigger})`);
+  state.beginLogRun();
+  state.log('info', `Update started (${trigger})`, null, 'start');
 
   const records = [];
   let hadError = false;
@@ -392,7 +393,7 @@ export async function runUpdate(
       ? 'Completed with some errors — see the activity log'
       : `Synced ${records.length} record(s)`;
     state.finishRun({ result, message });
-    state.log(hadError ? 'warn' : 'success', `Update finished: ${message}`);
+    state.log(hadError ? 'warn' : 'success', `Update finished: ${message}`, null, 'end');
 
     // 5) Notifications (best-effort; never affect the run result).
     await dispatchNotifications(cfg, { result, message, records, ipv4, ipv6 }).catch(() => {});
@@ -400,10 +401,11 @@ export async function runUpdate(
     return { result, message, records };
   } catch (err) {
     state.finishRun({ result: 'error', message: err.message });
-    state.log('error', `Update failed: ${err.message}`);
+    state.log('error', `Update failed: ${err.message}`, null, 'end');
     return { result: 'error', message: err.message, records };
   } finally {
     state.setRunning(false);
+    state.endLogRun();
   }
 }
 

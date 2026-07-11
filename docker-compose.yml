@@ -15,5 +15,7 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:-}
       # Set to true to enable the optional "Other DDNS" tab (DuckDNS / FreeDNS / DynDNS2).
       ENABLE_OTHER_DDNS: ${ENABLE_OTHER_DDNS:-false}
+      # Set to true to skip the footer's GitHub update check (air-gapped installs).
+      DISABLE_UPDATE_CHECK: ${DISABLE_UPDATE_CHECK:-false}
     volumes:
       - ./data:/data
