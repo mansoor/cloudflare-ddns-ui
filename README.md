@@ -20,8 +20,9 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - 🔐 **Login-protected** — single admin account (session cookie + bcrypt)
 - 🌐 **IPv4 + IPv6** — independent providers (`cloudflare.trace`, `ipify`, custom URL, or off)
 - ⏱️ **Scheduler** — configurable interval, runs on startup, "Update now" button, and a **Pause/Resume** toggle (the paused state persists across restarts)
-- 🎯 **Per-zone update** — an "Update" badge on each zone card syncs just that one zone on demand
+- 🎯 **Per-zone update & enable/disable** — an "Update" badge syncs just one zone on demand; toggle a zone off to park it without deleting
 - 🛡️ **WAF / IP Lists** — keep a Cloudflare account-level IP List updated with your current IP, to reference in firewall rules
+- 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS & generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, …) behind a flag
 - 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, on update failures, IP changes, and/or successful record changes (each toggleable)
 - 🎨 **Light / Dark / System** theme
 - ✅ **Idempotent** — only touches records that actually changed
@@ -147,13 +148,16 @@ providers are never contacted — your Cloudflare setup is completely unaffected
 
 ## Notes & limitations
 
+- **Pre-1.0 (0.x):** still stabilizing — expect occasional changes until `v1.0.0`.
 - Manages **A / AAAA** records and account **IP Lists**. Load balancers are still out of scope.
+- Non-Cloudflare DDNS (**DuckDNS / DynDNS2**) is **opt-in** via `ENABLE_NON_CLOUDFLARE_DDNS`, and stays
+  hidden/inactive when off — the Cloudflare path is unaffected either way.
 - Notifications cover Discord, Slack, and generic webhook/ntfy (the webhook channel also covers
   Gotify / Home Assistant / custom endpoints). Telegram/Pushover aren't built in.
 - WAF list-item changes use Cloudflare's async bulk API — the UI reports "submitted".
 - Single admin login (no multi-user / RBAC).
-- Tokens and webhook URLs are stored in plaintext in `data/config.json` (same trust model as the
-  reference app's config file) and redacted over the API. Keep the `data` directory and login private.
+- Tokens, passwords, and webhook URLs are stored in plaintext in `data/config.json` (same trust model
+  as the reference app's config file) and redacted over the API. Keep the `data` directory and login private.
 
 ## How it works
 
@@ -167,11 +171,12 @@ config.json (zones + subdomains) ──▶ updater ──▶ Cloudflare API (A/A
 
 - `src/ip.js` — public IP detection
 - `src/cloudflare.js` — Cloudflare API v4 client (DNS records + account IP lists)
-- `src/updater.js` — the sync engine (create / update / unchanged / optional purge / WAF / notifications)
+- `src/updater.js` — the sync engine (create / update / unchanged / optional purge / WAF / DDNS / notifications)
 - `src/scheduler.js` — cron loop, reschedules when you save settings
 - `src/notify.js` — Discord / Slack / webhook senders · `src/runtime.js` — last-IP persistence
+- `src/ddns.js` — DuckDNS / DynDNS2 providers · `src/features.js` — opt-in feature flags
 - `src/routes/api.js` — REST API behind session auth
-- `web/` — Tailwind UI (login + dashboard/zones/waf/settings)
+- `web/` — Tailwind UI (login + dashboard / zones / waf / ddns / settings)
 
 ## Build from source
 
