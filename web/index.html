@@ -96,13 +96,25 @@
           <div class="card overflow-hidden">
             <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-700">
               <h2 class="text-sm font-semibold">Managed records</h2>
-              <input
-                id="records-filter"
-                type="search"
-                placeholder="Filter records…"
-                class="input w-40 py-1 text-xs sm:w-56"
-                autocomplete="off"
-              />
+              <div class="flex items-center gap-2">
+                <input
+                  id="records-filter"
+                  type="search"
+                  placeholder="Filter records…"
+                  class="input w-32 py-1 text-xs sm:w-48"
+                  autocomplete="off"
+                />
+                <div class="relative">
+                  <button type="button" id="status-filter-btn" class="btn-secondary py-1 text-xs">Status ▾</button>
+                  <div id="status-filter-menu" class="absolute right-0 z-20 mt-1 hidden w-44 rounded-lg border border-slate-200 bg-white p-1.5 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                    <label class="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-700/50"><input type="checkbox" class="status-opt h-3.5 w-3.5 rounded border-slate-300" value="created" checked /> created</label>
+                    <label class="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-700/50"><input type="checkbox" class="status-opt h-3.5 w-3.5 rounded border-slate-300" value="updated" checked /> updated</label>
+                    <label class="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-700/50"><input type="checkbox" class="status-opt h-3.5 w-3.5 rounded border-slate-300" value="unchanged" checked /> unchanged</label>
+                    <label class="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-700/50"><input type="checkbox" class="status-opt h-3.5 w-3.5 rounded border-slate-300" value="error" checked /> error</label>
+                    <label class="flex items-center gap-2 rounded px-2 py-1 hover:bg-slate-50 dark:hover:bg-slate-700/50"><input type="checkbox" class="status-opt h-3.5 w-3.5 rounded border-slate-300" value="disabled" /> disabled</label>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="max-h-96 overflow-auto">
               <table class="w-full text-sm">

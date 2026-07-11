@@ -28,22 +28,53 @@ function ddnsHost(p) {
   return p.domains;
 }
 
-// The set of record FQDNs the config currently manages — used to prune stale
-// dashboard rows the moment something is removed. Mirrors how runUpdate labels
-// each record's `fqdn`.
-export function expectedRecordFqdns(cfg) {
+// FQDNs of currently-ENABLED sync targets (used to keep their last-sync rows).
+export function enabledTargetFqdns(cfg) {
   const set = new Set();
   for (const acc of cfg.cloudflare || []) {
-    if (acc.enabled === false || !acc.zone_name) continue; // disabled → its rows get pruned
+    if (acc.enabled === false || !acc.zone_name) continue;
     for (const sub of acc.subdomains || []) set.add(buildFqdn(sub.name, acc.zone_name));
   }
   for (const w of cfg.waf_lists || []) if (w.list_name) set.add(w.list_name);
   for (const p of cfg.ddns_providers || []) {
-    if (p.enabled === false) continue; // disabled → pruned
+    if (p.enabled === false) continue;
     const host = ddnsHost(p);
     if (host) set.add(host);
   }
   return set;
+}
+
+// Synthetic "disabled" rows for disabled zones/providers, so they still appear
+// in Managed records (just filtered out by default in the UI).
+export function disabledRecords(cfg) {
+  const out = [];
+  const at = new Date().toISOString();
+  for (const acc of cfg.cloudflare || []) {
+    if (acc.enabled !== false || !acc.zone_name) continue;
+    for (const sub of acc.subdomains || []) {
+      const fqdn = buildFqdn(sub.name, acc.zone_name);
+      const proxied = Boolean(sub.proxied);
+      if (cfg.a) out.push({ fqdn, type: 'A', proxied, status: 'disabled', detail: 'zone disabled', at });
+      if (cfg.aaaa) out.push({ fqdn, type: 'AAAA', proxied, status: 'disabled', detail: 'zone disabled', at });
+    }
+  }
+  if (DDNS_ENABLED) {
+    for (const p of cfg.ddns_providers || []) {
+      if (p.enabled !== false) continue;
+      const host = ddnsHost(p);
+      if (host) out.push({ fqdn: host, type: ddnsTypeLabel(p.type), status: 'disabled', detail: 'provider disabled', at });
+    }
+  }
+  return out;
+}
+
+// After a config save, rebuild the managed list: keep last-sync rows for
+// still-enabled targets, add "disabled" rows for disabled ones, drop anything
+// removed.
+export function reconcileRecords(cfg) {
+  const enabled = enabledTargetFqdns(cfg);
+  const kept = state.getState().records.filter((r) => enabled.has(r.fqdn) && r.status !== 'disabled');
+  state.setRecords([...kept, ...disabledRecords(cfg)]);
 }
 
 // Decide whether an existing record already matches what we want.
@@ -229,10 +260,7 @@ export async function runUpdate(
 
     // 2) Walk each selected account / subdomain / record type.
     for (const acc of accounts) {
-      if (acc.enabled === false) {
-        state.log('info', `Skipping disabled zone "${acc.label || acc.zone_name || acc.zone_id}"`);
-        continue;
-      }
+      if (acc.enabled === false) continue; // shown as "disabled" rows below
       if (!acc.api_token || !acc.zone_id || !acc.zone_name) {
         state.log('warn', `Skipping account "${acc.label || acc.zone_id}" — missing token/zone`);
         continue;
@@ -355,7 +383,10 @@ export async function runUpdate(
       }
     }
 
-    state.setRecords(records);
+    // Full runs show the complete picture, including "disabled" rows; scoped
+    // (per-item) runs only touch their own scope.
+    const isFullRun = !accountId && !wafId && !ddnsId;
+    state.setRecords(isFullRun ? [...records, ...disabledRecords(cfg)] : records);
     const result = hadError ? 'partial' : 'ok';
     const message = hadError
       ? 'Completed with some errors — see the activity log'

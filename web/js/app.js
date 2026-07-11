@@ -45,6 +45,7 @@ const STATUS_STYLES = {
   unchanged: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
   deleted: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
   error: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+  disabled: 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
 };
 const LOG_STYLES = {
   info: 'text-slate-500',
@@ -1058,17 +1059,28 @@ function recordMatchesFilter(r, q) {
   return hay.includes(q);
 }
 
+// Statuses whose checkbox is unchecked in the Status dropdown (hidden).
+function hiddenStatuses() {
+  return new Set(
+    $$('#status-filter-menu .status-opt')
+      .filter((c) => !c.checked)
+      .map((c) => c.value)
+  );
+}
+
 function renderRecords(records) {
   const body = $('#records-body');
   const q = ($('#records-filter')?.value || '').trim().toLowerCase();
+  const hidden = hiddenStatuses();
   if (!records || !records.length) {
     body.innerHTML =
       '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records yet — run an update.</td></tr>';
     return;
   }
-  const rows = records.filter((r) => recordMatchesFilter(r, q));
+  const rows = records.filter((r) => !hidden.has(r.status) && recordMatchesFilter(r, q));
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records match “${esc(q)}”.</td></tr>`;
+    body.innerHTML =
+      '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records match the current filter.</td></tr>';
     return;
   }
   body.innerHTML = rows
@@ -1273,6 +1285,17 @@ async function init() {
   $('#update-now').addEventListener('click', updateNow);
   $('#pause-toggle').addEventListener('click', togglePause);
   $('#records-filter').addEventListener('input', () => renderRecords(LAST_RECORDS));
+  // Status filter dropdown
+  const statusMenu = $('#status-filter-menu');
+  $('#status-filter-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    statusMenu.classList.toggle('hidden');
+  });
+  statusMenu.addEventListener('click', (e) => e.stopPropagation());
+  $$('#status-filter-menu .status-opt').forEach((c) =>
+    c.addEventListener('change', () => renderRecords(LAST_RECORDS))
+  );
+  document.addEventListener('click', () => statusMenu.classList.add('hidden'));
   $('#ip4-provider').addEventListener('change', () => toggleCustom('#ip4-provider', '#ip4-custom'));
   $('#ip6-provider').addEventListener('change', () => toggleCustom('#ip6-provider', '#ip6-custom'));
 
