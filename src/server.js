@@ -7,6 +7,8 @@ import { registerAuth } from './auth.js';
 import apiRoutes from './routes/api.js';
 import { startScheduler } from './scheduler.js';
 import { loadConfig } from './config.js';
+import { applyLogConfig, initLogFromFile } from './state.js';
+import { startDailyPrune, prune } from './logfile.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -56,8 +58,15 @@ async function main() {
 
   await app.register(apiRoutes);
 
-  // Ensure config exists, then start the DDNS scheduler.
-  await loadConfig();
+  // Ensure config exists, apply log settings, and (if persistent) seed the
+  // in-memory log from disk and prune anything past retention.
+  const cfg = await loadConfig();
+  applyLogConfig(cfg);
+  await initLogFromFile();
+  prune().catch(() => {});
+  startDailyPrune();
+
+  // Start the DDNS scheduler.
   await startScheduler({ runOnStart: true });
 
   try {

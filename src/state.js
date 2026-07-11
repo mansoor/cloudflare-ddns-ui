@@ -1,7 +1,10 @@
-// In-memory runtime status + a rolling activity log. Not persisted — resets on
-// restart, which is fine for status/observability.
+// In-memory runtime status + a rolling activity log. The log is always held in
+// memory (newest first) for the dashboard; optionally it's also mirrored to a
+// file (see logfile.js) so it survives restarts.
 
-const MAX_LOG = 200;
+import { appendEntry, configureLogFile, loadRecent } from './logfile.js';
+
+let maxLog = 200; // rows kept in memory; overridden from config
 
 const state = {
   running: false,
@@ -77,6 +80,36 @@ export function endLogRun() {
 
 // phase: 'start' | 'end' marks the update's start/finish lines so the UI knows
 // which entry heads the collapsible group.
+// Configure how many rows the in-memory log keeps (trims immediately if lower).
+export function setMaxLog(n) {
+  maxLog = Math.min(5000, Math.max(10, Number(n) || 200));
+  if (state.log.length > maxLog) state.log.length = maxLog;
+}
+
+// Replace the in-memory log wholesale (used to repopulate from the file on boot).
+export function setLog(entries) {
+  state.log = Array.isArray(entries) ? entries.slice(0, maxLog) : [];
+}
+
+// Apply the config's log settings: in-memory size + file persistence. Safe to
+// call on every config save; does not touch the current in-memory entries.
+export function applyLogConfig(cfg) {
+  const log = cfg?.log || {};
+  setMaxLog(log.memory_rows);
+  configureLogFile({
+    enabled: log.persistent,
+    fileName: log.file_name,
+    retentionDays: log.retention_days,
+  });
+}
+
+// On boot, if persistence is on, seed the in-memory log from the file so the
+// dashboard shows history from before the restart.
+export async function initLogFromFile() {
+  const recent = await loadRecent(maxLog);
+  if (recent.length) setLog(recent);
+}
+
 export function log(level, message, meta, phase) {
   const entry = {
     at: new Date().toISOString(),
@@ -87,6 +120,8 @@ export function log(level, message, meta, phase) {
     ...(meta ? { meta } : {}),
   };
   state.log.unshift(entry);
-  if (state.log.length > MAX_LOG) state.log.length = MAX_LOG;
+  if (state.log.length > maxLog) state.log.length = maxLog;
+  // Mirror to disk when persistence is on (best-effort, non-blocking).
+  appendEntry(entry);
   return entry;
 }

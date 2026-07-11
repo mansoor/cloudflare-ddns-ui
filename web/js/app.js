@@ -277,9 +277,27 @@ function renderConfig(cfg) {
   toggleCustom('#ip4-provider', '#ip4-custom');
   toggleCustom('#ip6-provider', '#ip6-custom');
 
+  renderLogSettings(cfg.log || {});
   renderWaf(cfg.waf_lists || []);
   renderNotifications(cfg.notifications || { events: {}, channels: [] });
   renderDdns(cfg.ddns_providers || []);
+}
+
+// Show the in-memory row count OR the file-name + retention fields, depending
+// on whether persistence is on.
+function toggleLogFields() {
+  const on = $('#log-persistent').checked;
+  $('#log-memory-field').classList.toggle('hidden', on);
+  $('#log-file-field').classList.toggle('hidden', !on);
+  $('#log-retention-field').classList.toggle('hidden', !on);
+}
+
+function renderLogSettings(log) {
+  $('#log-persistent').checked = Boolean(log.persistent);
+  $('#log-memory-rows').value = log.memory_rows ?? 200;
+  $('#log-file-name').value = log.file_name || 'activity.log';
+  $('#log-retention').value = log.retention_days ?? 30;
+  toggleLogFields();
 }
 
 // Re-render WAF cards, preserving which were expanded (by id / list name).
@@ -361,6 +379,12 @@ function collectConfig() {
     waf_lists: collectWaf(),
     notifications: collectNotifications(),
     ddns_providers: collectDdns(),
+    log: {
+      persistent: $('#log-persistent').checked,
+      memory_rows: Number($('#log-memory-rows').value) || 200,
+      file_name: $('#log-file-name').value.trim() || 'activity.log',
+      retention_days: Number($('#log-retention').value) || 30,
+    },
   };
 }
 
@@ -1398,6 +1422,7 @@ async function init() {
   document.addEventListener('click', () => statusMenu.classList.add('hidden'));
   $('#ip4-provider').addEventListener('change', () => toggleCustom('#ip4-provider', '#ip4-custom'));
   $('#ip6-provider').addEventListener('change', () => toggleCustom('#ip6-provider', '#ip6-custom'));
+  $('#log-persistent').addEventListener('change', toggleLogFields);
 
   await loadConfig();
   await refreshStatus();
