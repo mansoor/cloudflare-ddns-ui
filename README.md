@@ -1,7 +1,7 @@
-# Cloudflare DDNS UI
+# Cloudflare DDNS+
 
-[![Release](https://img.shields.io/github/v/release/mansoor/cloudflare-ddns-ui?sort=semver)](https://github.com/mansoor/cloudflare-ddns-ui/releases)
-[![GHCR image](https://img.shields.io/badge/ghcr.io-cloudflare--ddns--ui-1668dc?logo=docker&logoColor=white)](https://github.com/mansoor/cloudflare-ddns-ui/pkgs/container/cloudflare-ddns-ui)
+[![Release](https://img.shields.io/github/v/release/mansoor/cloudflare-ddns-plus?sort=semver)](https://github.com/mansoor/cloudflare-ddns-plus/releases)
+[![GHCR image](https://img.shields.io/badge/ghcr.io-cloudflare--ddns--plus-1668dc?logo=docker&logoColor=white)](https://github.com/mansoor/cloudflare-ddns-plus/pkgs/container/cloudflare-ddns-plus)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A small self-hosted **dynamic DNS updater for Cloudflare** with a clean web UI — inspired by
@@ -9,10 +9,16 @@ A small self-hosted **dynamic DNS updater for Cloudflare** with a clean web UI �
 everything (API token, zones, subdomains, A/AAAA records, proxying, TTL, IP providers, schedule)
 through a **Tailwind** web form instead of editing `config.json` by hand.
 
+The **“+”** is two things: it adds a **web UI** on top of the JSON-file approach, and it optionally
+updates **other DDNS providers** (DuckDNS, FreeDNS, DynDNS2) alongside Cloudflare.
+
 It detects your public IPv4/IPv6 on a schedule and creates or updates the matching Cloudflare
 `A` / `AAAA` records — so a home server on a dynamic IP stays reachable via your domain.
 
-![Cloudflare DDNS UI — dashboard shown in dark and light themes](docs/screenshot.png)
+> **Not affiliated with, or endorsed by, Cloudflare, Inc.** “Cloudflare” is a trademark of its owner;
+> it’s used here only to describe what this tool works with. This is an independent open-source project.
+
+![Cloudflare DDNS+ — dashboard shown in dark and light themes](docs/screenshot.png)
 
 ## Features
 
@@ -38,14 +44,14 @@ The image is published to GitHub Container Registry — you don't need the sourc
 
 ```bash
 docker run -d \
-  --name cloudflare-ddns-ui \
+  --name cloudflare-ddns-plus \
   -p 8080:8080 \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=change-me \
   -e ENABLE_OTHER_DDNS=false \
   -v "$PWD/data:/data" \
   --restart unless-stopped \
-  ghcr.io/mansoor/cloudflare-ddns-ui:latest
+  ghcr.io/mansoor/cloudflare-ddns-plus:latest
 ```
 
 ### Option B — Docker Compose (recommended)
@@ -54,9 +60,9 @@ Save this as `docker-compose.yml`, then run `docker compose up -d`:
 
 ```yaml
 services:
-  cloudflare-ddns-ui:
-    image: ghcr.io/mansoor/cloudflare-ddns-ui:latest
-    container_name: cloudflare-ddns-ui
+  cloudflare-ddns-plus:
+    image: ghcr.io/mansoor/cloudflare-ddns-plus:latest
+    container_name: cloudflare-ddns-plus
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -213,7 +219,7 @@ npm start              # or: npm run dev  (auto-reload + pretty logs)
 During UI work, watch the CSS in a second terminal: `npm run watch:css`.
 
 Releases are cut by pushing a `v*` tag — the [`docker-release`](.github/workflows/docker-release.yml)
-workflow builds and publishes `ghcr.io/mansoor/cloudflare-ddns-ui` with `:vX.Y.Z` and `:latest` tags.
+workflow builds and publishes `ghcr.io/mansoor/cloudflare-ddns-plus` with `:vX.Y.Z` and `:latest` tags.
 
 ## Troubleshooting
 

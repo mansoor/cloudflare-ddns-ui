@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in improving **Cloudflare DDNS UI**! Bug reports, feature ideas, and pull
+Thanks for your interest in improving **Cloudflare DDNS+**! Bug reports, feature ideas, and pull
 requests are all welcome.
 
 By participating you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
@@ -18,8 +18,8 @@ saves everyone time.
 Requires **Node.js 20+**.
 
 ```bash
-git clone https://github.com/mansoor/cloudflare-ddns-ui.git
-cd cloudflare-ddns-ui
+git clone https://github.com/mansoor/cloudflare-ddns-plus.git
+cd cloudflare-ddns-plus
 npm install
 npm run build:css      # compile Tailwind -> public/app.css
 npm run dev            # starts on http://localhost:8080 (auto-reload + pretty logs)

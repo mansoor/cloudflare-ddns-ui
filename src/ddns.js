@@ -91,7 +91,7 @@ async function updateDynDns2(p, { ipv4, ipv6 }) {
 
   const auth = Buffer.from(`${p.username}:${p.password}`).toString('base64');
   const r = await httpGet(`${scheme}://${p.server}/nic/update?${params.toString()}`, {
-    headers: { Authorization: `Basic ${auth}`, 'User-Agent': 'cloudflare-ddns-ui/1.x' },
+    headers: { Authorization: `Basic ${auth}`, 'User-Agent': 'cloudflare-ddns-plus/1.x' },
   });
   if (r.error) return { ok: false, status: 'error', detail: r.error };
 
@@ -151,7 +151,7 @@ async function updateFreeDns(p, { ipv4, ipv6 }) {
     if (ip) params.set('myip', ip);
     const auth = Buffer.from(`${p.username}:${p.password}`).toString('base64');
     const r = await httpGet(`${scheme}://${server}/nic/update?${params.toString()}`, {
-      headers: { Authorization: `Basic ${auth}`, 'User-Agent': 'cloudflare-ddns-ui/1.x' },
+      headers: { Authorization: `Basic ${auth}`, 'User-Agent': 'cloudflare-ddns-plus/1.x' },
     });
     return parseFreeDns(r, p.hostname, ip);
   }
