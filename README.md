@@ -143,7 +143,7 @@ Enable it by setting `ENABLE_NON_CLOUDFLARE_DDNS=true`; a **DDNS** tab appears. 
 | Provider | What you provide |
 |---|---|
 | **DuckDNS** | Domain(s) (without `.duckdns.org`) + your **token** |
-| **FreeDNS** (afraid.org) | Your per-host **update token or URL** (from the Dynamic DNS page); optional hostname for display |
+| **FreeDNS** (afraid.org) | Pick a **method**: *Update token/URL* — one or more per-host update tokens/URLs (add as many as you like); or *Username & password* — hostname + credentials (DynDNS2-style) |
 | **DynDNS2** | **Server host** (e.g. `dynupdate.no-ip.com`), **hostname**, **username**, **password**, HTTPS on/off |
 
 **Test** does a live update and shows the provider's response. When off, the tab is hidden and these

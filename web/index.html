@@ -520,29 +520,47 @@
               <label class="label">Domains <span class="text-slate-400">(comma-separated, without .duckdns.org)</span></label>
               <input class="input ddns-domains" placeholder="myhost" />
             </div>
-            <div class="ddns-f-duckdns ddns-f-freedns ddns-field sm:col-span-2">
-              <label class="label ddns-token-label">Token</label>
+            <div class="ddns-f-duckdns ddns-field sm:col-span-2">
+              <label class="label">Token</label>
               <input class="input ddns-token" type="password" placeholder="DuckDNS token" autocomplete="off" />
             </div>
 
-            <!-- DynDNS2 fields -->
+            <!-- FreeDNS: method selector -->
+            <div class="ddns-f-freedns ddns-field sm:col-span-2">
+              <label class="label">Method</label>
+              <select class="input ddns-fd-method">
+                <option value="token">Update token / URL</option>
+                <option value="userpass">Username &amp; password</option>
+              </select>
+            </div>
+            <!-- FreeDNS: token/URL rows -->
+            <div class="ddns-fd-tokenrows ddns-field sm:col-span-2">
+              <div class="mb-1 flex items-center justify-between">
+                <label class="label mb-0">Update tokens / URLs</label>
+                <button type="button" class="btn-add text-xs ddns-add-url">+ Add URL</button>
+              </div>
+              <p class="mb-2 text-xs text-slate-500">Each host's update token or full update URL (FreeDNS → Dynamic DNS). Shown in plain text.</p>
+              <div class="ddns-urls space-y-2"></div>
+            </div>
+
+            <!-- DynDNS2 fields (+ FreeDNS username/password) -->
             <div class="ddns-f-dyndns2 ddns-field hidden sm:col-span-2">
               <label class="label">Server host</label>
               <input class="input ddns-server" placeholder="dynupdate.no-ip.com" />
             </div>
-            <div class="ddns-f-dyndns2 ddns-f-freedns ddns-field hidden sm:col-span-2">
-              <label class="label ddns-hostname-label">Hostname</label>
+            <div class="ddns-f-dyndns2 ddns-fd-userpass ddns-field hidden sm:col-span-2">
+              <label class="label">Hostname</label>
               <input class="input ddns-hostname" placeholder="myhost.ddns.net" />
             </div>
-            <div class="ddns-f-dyndns2 ddns-field hidden">
+            <div class="ddns-f-dyndns2 ddns-fd-userpass ddns-field hidden">
               <label class="label">Username</label>
               <input class="input ddns-username" autocomplete="off" />
             </div>
-            <div class="ddns-f-dyndns2 ddns-field hidden">
+            <div class="ddns-f-dyndns2 ddns-fd-userpass ddns-field hidden">
               <label class="label">Password</label>
               <input class="input ddns-password" type="password" autocomplete="off" />
             </div>
-            <label class="ddns-f-dyndns2 ddns-field hidden sm:col-span-2 flex items-center gap-2 text-sm">
+            <label class="ddns-f-dyndns2 ddns-fd-userpass ddns-field hidden sm:col-span-2 flex items-center gap-2 text-sm">
               <input type="checkbox" class="ddns-https h-4 w-4 rounded border-slate-300" /> Use HTTPS
             </label>
             <p class="ddns-verify-msg sm:col-span-2 text-xs"></p>
@@ -555,6 +573,14 @@
             </div>
           </div>
         </div>
+      </div>
+    </template>
+
+    <!-- FreeDNS update-URL row template -->
+    <template id="ddns-url-template">
+      <div class="ddns-url-row flex items-center gap-2">
+        <input class="input ddns-url" placeholder="update token or full update URL" />
+        <button type="button" class="btn-ghost text-sm text-red-600 ddns-url-remove">✕</button>
       </div>
     </template>
 

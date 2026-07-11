@@ -765,43 +765,43 @@ function updateDdnsEmpty() {
 
 function toggleDdnsFields(node) {
   const type = $('.ddns-type', node).value;
-  // A field group is shown if it carries the `ddns-f-<type>` class (some are
-  // shared, e.g. the token field for duckdns + freedns).
+  const method = $('.ddns-fd-method', node).value;
   $$('.ddns-field', node).forEach((el) => {
-    el.classList.toggle('hidden', !el.classList.contains(`ddns-f-${type}`));
+    let show;
+    if (type === 'freedns') {
+      // FreeDNS visibility depends on the chosen method.
+      if (el.classList.contains('ddns-fd-tokenrows')) show = method === 'token';
+      else if (el.classList.contains('ddns-fd-userpass')) show = method === 'userpass';
+      else show = el.classList.contains('ddns-f-freedns'); // the method selector
+    } else {
+      show = el.classList.contains(`ddns-f-${type}`);
+    }
+    el.classList.toggle('hidden', !show);
   });
-  applyDdnsTypeText(node, type);
 }
 
-// Adapt the shared token/hostname field labels + placeholders per provider type.
-function applyDdnsTypeText(node, type) {
-  const tokenLabel = $('.ddns-token-label', node);
-  const tokenInput = $('.ddns-token', node);
-  const hostLabel = $('.ddns-hostname-label', node);
-  const hostInput = $('.ddns-hostname', node);
-  const setTokenPh = (ph) => {
-    if (tokenInput && node.dataset.hasToken !== '1') tokenInput.placeholder = ph;
-  };
-  if (type === 'freedns') {
-    if (tokenLabel) tokenLabel.textContent = 'Update token or URL';
-    setTokenPh('random token from your update URL, or the full URL');
-    if (hostLabel) hostLabel.textContent = 'Hostname (optional, for display)';
-    if (hostInput) hostInput.placeholder = 'myhost.mooo.com';
-  } else if (type === 'duckdns') {
-    if (tokenLabel) tokenLabel.textContent = 'Token';
-    setTokenPh('DuckDNS token');
-  } else {
-    if (hostLabel) hostLabel.textContent = 'Hostname';
-    if (hostInput) hostInput.placeholder = 'myhost.ddns.net';
-  }
+// One FreeDNS update token/URL row.
+function makeDdnsUrlRow(node, value = '') {
+  const row = $('#ddns-url-template').content.firstElementChild.cloneNode(true);
+  $('.ddns-url', row).value = value;
+  $('.ddns-url-remove', row).addEventListener('click', () => row.remove());
+  return row;
 }
 
 function updateDdnsSummary(node) {
   const type = $('.ddns-type', node).value;
+  const method = $('.ddns-fd-method', node).value;
   const hostname = $('.ddns-hostname', node).value.trim();
   const domains = $('.ddns-domains', node).value.trim();
   const label = $('.ddns-label', node).value.trim();
-  const host = type === 'dyndns2' ? hostname : type === 'freedns' ? hostname || label : domains;
+  const host =
+    type === 'dyndns2'
+      ? hostname
+      : type === 'freedns'
+      ? method === 'userpass'
+        ? hostname
+        : label
+      : domains;
   const enabled = $('.ddns-enabled', node).checked;
   const typeName = type === 'dyndns2' ? 'DynDNS2' : type === 'freedns' ? 'FreeDNS' : 'DuckDNS';
   $('.ddns-summary-title', node).textContent = label || host || 'New provider';
@@ -826,6 +826,12 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
   $('.ddns-hostname', node).value = p.hostname || '';
   $('.ddns-username', node).value = p.username || '';
   $('.ddns-https', node).checked = p.https !== false;
+  $('.ddns-fd-method', node).value = p.method === 'userpass' ? 'userpass' : 'token';
+
+  // FreeDNS update-URL rows (start with one empty row).
+  const urlsWrap = $('.ddns-urls', node);
+  const urls = p.urls && p.urls.length ? p.urls : [''];
+  urls.forEach((u) => urlsWrap.appendChild(makeDdnsUrlRow(node, u)));
 
   const tokenInput = $('.ddns-token', node);
   if (p.token_hint) {
@@ -842,6 +848,13 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
     toggleDdnsFields(node);
     updateDdnsSummary(node);
   });
+  $('.ddns-fd-method', node).addEventListener('change', () => {
+    toggleDdnsFields(node);
+    updateDdnsSummary(node);
+  });
+  $('.ddns-add-url', node).addEventListener('click', () =>
+    $('.ddns-urls', node).appendChild(makeDdnsUrlRow(node))
+  );
   ['.ddns-label', '.ddns-domains', '.ddns-hostname'].forEach((sel) =>
     $(sel, node).addEventListener('input', () => updateDdnsSummary(node))
   );
@@ -874,6 +887,8 @@ function collectOneDdns(node) {
     label: $('.ddns-label', node).value.trim(),
     domains: $('.ddns-domains', node).value.trim(),
     token: tokenVal || (node.dataset.hasToken ? REDACTED : ''),
+    method: $('.ddns-fd-method', node).value,
+    urls: $$('.ddns-urls .ddns-url', node).map((i) => i.value.trim()).filter(Boolean),
     server: $('.ddns-server', node).value.trim(),
     hostname: $('.ddns-hostname', node).value.trim(),
     username: $('.ddns-username', node).value.trim(),
@@ -891,8 +906,15 @@ function ddnsMissingField(node) {
   if (type === 'duckdns') {
     if (!$('.ddns-domains', node).value.trim()) return 'Enter the DuckDNS domain(s).';
   } else if (type === 'freedns') {
-    if (!$('.ddns-token', node).value.trim() && node.dataset.hasToken !== '1')
-      return 'Enter the FreeDNS update token or URL.';
+    if ($('.ddns-fd-method', node).value === 'userpass') {
+      if (!$('.ddns-hostname', node).value.trim()) return 'Enter the hostname.';
+      if (!$('.ddns-username', node).value.trim()) return 'Enter the username.';
+      if (!$('.ddns-password', node).value.trim() && node.dataset.hasPassword !== '1')
+        return 'Enter the password.';
+    } else {
+      const urls = $$('.ddns-urls .ddns-url', node).map((i) => i.value.trim()).filter(Boolean);
+      if (!urls.length) return 'Add at least one FreeDNS update token or URL.';
+    }
   } else {
     if (!$('.ddns-server', node).value.trim()) return 'Enter the DynDNS2 server host.';
     if (!$('.ddns-hostname', node).value.trim()) return 'Enter the hostname.';

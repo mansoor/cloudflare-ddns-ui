@@ -24,7 +24,7 @@ function ddnsTypeLabel(type) {
 }
 function ddnsHost(p) {
   if (p.type === 'dyndns2') return p.hostname;
-  if (p.type === 'freedns') return p.hostname || p.label;
+  if (p.type === 'freedns') return (p.method === 'userpass' ? p.hostname : p.label) || p.label || 'FreeDNS';
   return p.domains;
 }
 

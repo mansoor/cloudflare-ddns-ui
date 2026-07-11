@@ -108,30 +108,69 @@ async function updateDynDns2(p, { ipv4, ipv6 }) {
   return { ok: false, status: 'error', detail: `unexpected response: ${shorten(r.body)}` };
 }
 
-// --- FreeDNS (afraid.org): GET the per-host random-token update URL ---
-// The token identifies the host; we pass &address=<ip> to set a specific IP.
-async function updateFreeDns(p, { ipv4, ipv6 }) {
-  if (!p.token) return { ok: false, status: 'error', detail: 'no update token/URL configured' };
-
-  const t = p.token.trim();
-  const isUrl = /^https?:\/\//i.test(t);
-  let url = isUrl ? t : `${p.server || 'https://freedns.afraid.org/dynamic/update.php'}?${t}`;
-  const ip = ipv4 || ipv6;
-  if (ip) url += (url.includes('?') ? '&' : '?') + 'address=' + encodeURIComponent(ip);
-
-  const label = p.hostname || p.label || 'host';
-  const r = await httpGet(url);
+// --- FreeDNS (afraid.org) ---
+// Two official methods:
+//   token   → per-host random-token update URL(s); we pass &address=<ip>
+//   userpass→ DynDNS2-style /nic/update at freedns.afraid.org with Basic auth
+// FreeDNS replies with either plain text ("Updated…" / "…has not changed") or
+// DynDNS2 codes ("good" / "nochg") — accept both.
+function parseFreeDns(r, label, ip) {
   if (r.error) return { ok: false, status: 'error', detail: r.error };
   if (!r.httpOk) return { ok: false, status: 'error', detail: `FreeDNS server error (HTTP ${r.status})` };
-
-  // "ERROR: Address x has not changed." → no-op; "Updated <host> to <ip>" → changed.
-  if (/has not changed/i.test(r.body)) {
+  const body = r.body;
+  const first = body.split(/\s+/)[0].toLowerCase();
+  if (/has not changed/i.test(body) || first === 'nochg') {
     return { ok: true, status: 'unchanged', detail: `FreeDNS ${label} already ${ip || '(current)'}` };
   }
-  if (/^updated/i.test(r.body.trim())) {
+  if (/^updated/i.test(body.trim()) || first === 'good') {
     return { ok: true, status: 'updated', detail: `FreeDNS ${label} → ${ip || '(current)'}` };
   }
-  return { ok: false, status: 'error', detail: `FreeDNS: ${shorten(r.body)}` };
+  return { ok: false, status: 'error', detail: `FreeDNS: ${shorten(body)}` };
+}
+
+async function hitFreeDnsUrl(entry, server, ip) {
+  const t = String(entry).trim();
+  const isUrl = /^https?:\/\//i.test(t);
+  let url = isUrl ? t : `${server || 'https://freedns.afraid.org/dynamic/update.php'}?${t}`;
+  if (ip) url += (url.includes('?') ? '&' : '?') + 'address=' + encodeURIComponent(ip);
+  return parseFreeDns(await httpGet(url), 'host', ip);
+}
+
+async function updateFreeDns(p, { ipv4, ipv6 }) {
+  const ip = ipv4 || ipv6;
+
+  if (p.method === 'userpass') {
+    if (!p.hostname) return { ok: false, status: 'error', detail: 'hostname required' };
+    if (!p.username || !p.password) return { ok: false, status: 'error', detail: 'username/password required' };
+    const scheme = p.https === false ? 'http' : 'https';
+    const server = p.server || 'freedns.afraid.org';
+    const params = new URLSearchParams({ hostname: p.hostname });
+    if (ip) params.set('myip', ip);
+    const auth = Buffer.from(`${p.username}:${p.password}`).toString('base64');
+    const r = await httpGet(`${scheme}://${server}/nic/update?${params.toString()}`, {
+      headers: { Authorization: `Basic ${auth}`, 'User-Agent': 'cloudflare-ddns-ui/1.x' },
+    });
+    return parseFreeDns(r, p.hostname, ip);
+  }
+
+  // token / URL method — update each entry and aggregate.
+  const urls = (p.urls || []).filter(Boolean);
+  if (!urls.length) return { ok: false, status: 'error', detail: 'no update tokens/URLs configured' };
+  const results = [];
+  for (const u of urls) results.push(await hitFreeDnsUrl(u, p.server, ip));
+
+  const errs = results.filter((r) => !r.ok);
+  const updated = results.filter((r) => r.ok && r.status === 'updated').length;
+  const name = p.label || 'FreeDNS';
+  if (errs.length) {
+    return { ok: false, status: 'error', detail: `${name}: ${errs.length}/${results.length} failed — ${errs[0].detail}` };
+  }
+  const n = results.length;
+  return {
+    ok: true,
+    status: updated ? 'updated' : 'unchanged',
+    detail: `FreeDNS ${name}: ${updated} updated, ${n - updated} unchanged (${n} URL${n > 1 ? 's' : ''})`,
+  };
 }
 
 // Dispatch by provider type. `p` is a normalized ddns_providers entry.

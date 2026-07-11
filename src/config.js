@@ -93,6 +93,12 @@ export function normalizeConfig(input) {
 }
 
 function normalizeDdnsProvider(p) {
+  // FreeDNS token/URL list — migrate an older single `token` into the list.
+  const urls = Array.isArray(p?.urls)
+    ? p.urls
+    : p?.type === 'freedns' && p?.token
+    ? [p.token]
+    : [];
   return {
     id: p?.id || randomUUID(),
     type: DDNS_TYPES.includes(p?.type) ? p.type : 'duckdns',
@@ -101,7 +107,10 @@ function normalizeDdnsProvider(p) {
     // DuckDNS
     domains: String(p?.domains || '').trim(),
     token: String(p?.token || ''),
-    // DynDNS2
+    // FreeDNS token/URL method
+    method: p?.method === 'userpass' ? 'userpass' : 'token',
+    urls: urls.map((u) => String(u || '').trim()).filter(Boolean),
+    // DynDNS2 (+ FreeDNS username/password method)
     server: String(p?.server || '').trim(),
     hostname: String(p?.hostname || '').trim(),
     username: String(p?.username || ''),
