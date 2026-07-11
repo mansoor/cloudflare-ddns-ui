@@ -131,9 +131,15 @@ function updateAccountSummary(node) {
       ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
       : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300');
 
-  // "disabled" pill only shows when the zone is turned off.
+  // Persistent enabled/disabled status badge (like the DDNS cards).
   const enabled = $('.acc-enabled', node).checked;
-  $('.acc-disabled-badge', node).classList.toggle('hidden', enabled);
+  const eb = $('.acc-enabled-badge', node);
+  eb.textContent = enabled ? 'enabled' : 'disabled';
+  eb.className =
+    'acc-enabled-badge badge ' +
+    (enabled
+      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+      : 'bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-200');
 }
 
 function setCollapsed(node, collapsed) {
