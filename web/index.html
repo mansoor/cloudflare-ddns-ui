@@ -23,6 +23,9 @@
       <header class="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
           <div class="flex items-center gap-2">
+            <button id="nav-toggle" type="button" class="btn-ghost -ml-1.5 p-1.5 sm:hidden" aria-label="Menu" aria-expanded="false">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+            </button>
             <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-500 text-xl">🌩️</span>
             <div>
               <h1 class="text-sm font-semibold leading-tight">Cloudflare DDNS+</h1>
@@ -42,11 +45,14 @@
               </button>
             </div>
             <span id="user-label" class="hidden text-sm text-slate-500 sm:inline dark:text-slate-400"></span>
-            <button id="logout-btn" class="btn-ghost text-sm">Sign out</button>
+            <button id="logout-btn" class="btn-ghost text-sm" aria-label="Sign out" title="Sign out">
+              <span class="hidden sm:inline">Sign out</span>
+              <svg class="h-5 w-5 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
+            </button>
           </div>
         </div>
         <nav class="mx-auto max-w-5xl px-4">
-          <div class="flex gap-1">
+          <div id="nav-menu" class="flex flex-col gap-1 pb-2 max-sm:hidden sm:flex-row sm:pb-0">
             <button data-tab="dashboard" class="tab-btn -mb-px border-b-2 px-4 py-2 text-sm font-medium">Dashboard</button>
             <button data-tab="zones" class="tab-btn -mb-px border-b-2 px-4 py-2 text-sm font-medium">Zones</button>
             <button data-tab="waf" class="tab-btn -mb-px border-b-2 px-4 py-2 text-sm font-medium">WAF</button>
@@ -144,7 +150,8 @@
               </div>
             </div>
             <div class="max-h-96 overflow-auto">
-              <table class="w-full text-sm">
+              <!-- Desktop: table -->
+              <table class="hidden w-full text-sm sm:table">
                 <thead class="sticky top-0 z-10 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400 dark:bg-slate-900">
                   <tr>
                     <th class="px-4 py-2 font-medium">Name</th>
@@ -158,6 +165,10 @@
                   <tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records yet — run an update.</td></tr>
                 </tbody>
               </table>
+              <!-- Mobile: compact cards -->
+              <div id="records-cards" class="divide-y divide-slate-100 sm:hidden dark:divide-slate-700/50">
+                <div class="px-4 py-6 text-center text-slate-400">No records yet — run an update.</div>
+              </div>
             </div>
           </div>
 
@@ -418,9 +429,9 @@
             </div>
             <div class="sm:col-span-2">
               <label class="label">API token <span class="text-slate-400">(Edit DNS scope)</span></label>
-              <div class="flex gap-2">
+              <div class="flex flex-col gap-2 sm:flex-row">
                 <input class="input acc-token" type="password" placeholder="Cloudflare API token" autocomplete="off" />
-                <button type="button" class="btn-secondary whitespace-nowrap acc-verify">Verify &amp; load zones</button>
+                <button type="button" class="btn-secondary w-full whitespace-nowrap acc-verify sm:w-auto">Verify &amp; load zones</button>
               </div>
               <p class="acc-verify-msg mt-1 text-xs"></p>
             </div>
@@ -488,9 +499,9 @@
             </div>
             <div class="sm:col-span-2">
               <label class="label">API token <span class="text-slate-400">(Account Filter Lists → Edit)</span></label>
-              <div class="flex gap-2">
+              <div class="flex flex-col gap-2 sm:flex-row">
                 <input class="input waf-token" type="password" placeholder="Cloudflare API token" autocomplete="off" />
-                <button type="button" class="btn-secondary whitespace-nowrap waf-verify">Verify &amp; load lists</button>
+                <button type="button" class="btn-secondary w-full whitespace-nowrap waf-verify sm:w-auto">Verify &amp; load lists</button>
               </div>
               <p class="waf-verify-msg mt-1 text-xs"></p>
             </div>

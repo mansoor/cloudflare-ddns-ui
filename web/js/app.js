@@ -70,8 +70,30 @@ function initTabs() {
       if (sec) sec.classList.toggle('hidden', t !== name);
     });
   };
-  btns.forEach((b) => b.addEventListener('click', () => activate(b.dataset.tab)));
+  btns.forEach((b) =>
+    b.addEventListener('click', () => {
+      activate(b.dataset.tab);
+      closeNavMenu(); // collapse the mobile dropdown after choosing a tab
+    })
+  );
   activate('dashboard');
+
+  // Mobile hamburger toggles the nav dropdown.
+  const toggle = $('#nav-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      const menu = $('#nav-menu');
+      const open = menu.classList.toggle('max-sm:hidden') === false;
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+  }
+}
+
+function closeNavMenu() {
+  const menu = $('#nav-menu');
+  if (menu) menu.classList.add('max-sm:hidden');
+  const toggle = $('#nav-toggle');
+  if (toggle) toggle.setAttribute('aria-expanded', 'false');
 }
 
 // ---------- settings rendering ----------
@@ -1209,33 +1231,50 @@ function hiddenStatuses() {
   );
 }
 
+function recordTableRow(r) {
+  const style = STATUS_STYLES[r.status] || STATUS_STYLES.unchanged;
+  return `<tr>
+      <td class="px-4 py-2 font-mono">${esc(r.fqdn)}</td>
+      <td class="px-4 py-2">${esc(r.type)}</td>
+      <td class="px-4 py-2">${r.proxied ? '🟠 yes' : 'no'}</td>
+      <td class="px-4 py-2"><span class="badge ${style}">${esc(r.status)}</span></td>
+      <td class="px-4 py-2 text-slate-500">${esc(r.detail || '')}</td>
+    </tr>`;
+}
+
+// Compact card for the mobile records view (no horizontal scrolling).
+function recordCard(r) {
+  const style = STATUS_STYLES[r.status] || STATUS_STYLES.unchanged;
+  const detail = r.detail
+    ? `<p class="mt-1 break-words text-xs text-slate-500">${esc(r.detail)}</p>`
+    : '';
+  return `<div class="px-4 py-3">
+      <div class="flex items-center justify-between gap-2">
+        <span class="truncate font-mono text-sm font-medium">${esc(r.fqdn)}</span>
+        <span class="badge shrink-0 ${style}">${esc(r.status)}</span>
+      </div>
+      <div class="mt-1 flex items-center gap-3 text-xs text-slate-500">
+        <span>${esc(r.type)}</span>
+        <span>${r.proxied ? '🟠 proxied' : 'not proxied'}</span>
+      </div>
+      ${detail}
+    </div>`;
+}
+
 function renderRecords(records) {
   const body = $('#records-body');
+  const cards = $('#records-cards');
   const q = ($('#records-filter')?.value || '').trim().toLowerCase();
   const hidden = hiddenStatuses();
-  if (!records || !records.length) {
-    body.innerHTML =
-      '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records yet — run an update.</td></tr>';
-    return;
-  }
+  const setEmpty = (msg) => {
+    body.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">${msg}</td></tr>`;
+    cards.innerHTML = `<div class="px-4 py-6 text-center text-slate-400">${msg}</div>`;
+  };
+  if (!records || !records.length) return setEmpty('No records yet — run an update.');
   const rows = records.filter((r) => !hidden.has(r.status) && recordMatchesFilter(r, q));
-  if (!rows.length) {
-    body.innerHTML =
-      '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No records match the current filter.</td></tr>';
-    return;
-  }
-  body.innerHTML = rows
-    .map((r) => {
-      const style = STATUS_STYLES[r.status] || STATUS_STYLES.unchanged;
-      return `<tr>
-          <td class="px-4 py-2 font-mono">${esc(r.fqdn)}</td>
-          <td class="px-4 py-2">${esc(r.type)}</td>
-          <td class="px-4 py-2">${r.proxied ? '🟠 yes' : 'no'}</td>
-          <td class="px-4 py-2"><span class="badge ${style}">${esc(r.status)}</span></td>
-          <td class="px-4 py-2 text-slate-500">${esc(r.detail || '')}</td>
-        </tr>`;
-    })
-    .join('');
+  if (!rows.length) return setEmpty('No records match the current filter.');
+  body.innerHTML = rows.map(recordTableRow).join('');
+  cards.innerHTML = rows.map(recordCard).join('');
 }
 
 // runIds the user has expanded — kept across the 5s auto-refresh so an open
