@@ -1,6 +1,6 @@
 {
   "name": "cloudflare-ddns-plus",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Cloudflare DDNS+ — self-hosted dynamic DNS updater for Cloudflare (and other providers) with a Tailwind web UI",
   "type": "module",
   "license": "MIT",
