@@ -302,11 +302,14 @@ function renderImportPreview(items) {
   } else {
     wrap.innerHTML = items
       .map((i) => {
-        const icon = i.ok ? '✅' : i.duplicate ? '↔️' : '⚠️';
+        const icon = i.ok ? (i.warn ? '🟡' : '✅') : i.duplicate ? '↔️' : '⚠️';
         const name = esc(i.zone_name || i.zone_id || '(unknown zone)');
         const subs = i.ok && i.subdomains ? ` · ${i.subdomains.length} subdomain(s)` : '';
         const reason = i.reason ? ` — <span class="text-slate-500">${esc(i.reason)}</span>` : '';
-        return `<div class="${i.ok ? '' : 'text-slate-500'}">${icon} <span class="font-medium">${name}</span>${subs}${reason}</div>`;
+        const warn = i.warn
+          ? `<div class="pl-6 text-xs text-amber-600 dark:text-amber-400">${esc(i.warn)}</div>`
+          : '';
+        return `<div class="${i.ok ? '' : 'text-slate-500'}">${icon} <span class="font-medium">${name}</span>${subs}${reason}</div>${warn}`;
       })
       .join('');
   }

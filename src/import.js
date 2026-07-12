@@ -3,7 +3,7 @@
 // (auth is nested; there's no zone_name), so we translate and resolve the zone
 // name from Cloudflare using each entry's token.
 
-import { listZones } from './cloudflare.js';
+import { listZones, listRecords } from './cloudflare.js';
 
 // Map one upstream `cloudflare[]` entry to our account shape (without an id).
 // Returns { account } or { skip: <reason> }. Tolerates our own flat shape too.
@@ -81,9 +81,25 @@ export async function buildImportPreview(raw, existingZoneIds = new Set()) {
     }
 
     const duplicate = existingZoneIds.has(acc.zone_id);
+
+    // For importable zones, probe DNS-record read access. If this fails the
+    // token is scoped too narrowly (e.g. Zone:Read but not Zone:DNS) and syncs
+    // will fail — surface that now instead of after the first run. It's still
+    // importable; the warning is advisory. (Read access is what we can prove
+    // non-destructively; edit is confirmed on the first sync.)
+    let warn = '';
+    if (!duplicate) {
+      try {
+        await listRecords(acc.api_token, acc.zone_id, { type: 'A' });
+      } catch (err) {
+        warn = `this token can't read this zone's DNS records — check its Zone → DNS permission (${err.message})`;
+      }
+    }
+
     items.push({
       ok: !duplicate,
       duplicate,
+      warn,
       reason: duplicate ? 'already configured — will be skipped' : '',
       zone_id: acc.zone_id,
       zone_name: acc.zone_name,
