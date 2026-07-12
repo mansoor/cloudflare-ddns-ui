@@ -73,27 +73,31 @@ function initTabs() {
   btns.forEach((b) =>
     b.addEventListener('click', () => {
       activate(b.dataset.tab);
-      closeNavMenu(); // collapse the mobile dropdown after choosing a tab
+      setNavOpen(false); // close the mobile drawer after choosing a tab
     })
   );
   activate('dashboard');
 
-  // Mobile hamburger toggles the nav dropdown.
+  // Mobile hamburger slides the nav drawer in/out; backdrop closes it.
   const toggle = $('#nav-toggle');
+  const backdrop = $('#nav-backdrop');
   if (toggle) {
-    toggle.addEventListener('click', () => {
-      const menu = $('#nav-menu');
-      const open = menu.classList.toggle('max-sm:hidden') === false;
-      toggle.setAttribute('aria-expanded', String(open));
-    });
+    toggle.addEventListener('click', () =>
+      setNavOpen(!$('#nav-menu').classList.contains('nav-open'))
+    );
   }
+  if (backdrop) backdrop.addEventListener('click', () => setNavOpen(false));
 }
 
-function closeNavMenu() {
+// Open/close the mobile slide-out nav. No visual effect on desktop, where the
+// drawer's transform only applies under the max-width media query.
+function setNavOpen(open) {
   const menu = $('#nav-menu');
-  if (menu) menu.classList.add('max-sm:hidden');
+  const backdrop = $('#nav-backdrop');
   const toggle = $('#nav-toggle');
-  if (toggle) toggle.setAttribute('aria-expanded', 'false');
+  if (menu) menu.classList.toggle('nav-open', open);
+  if (backdrop) backdrop.classList.toggle('hidden', !open);
+  if (toggle) toggle.setAttribute('aria-expanded', String(open));
 }
 
 // ---------- settings rendering ----------
@@ -534,7 +538,7 @@ async function saveConfig({ btn, msg, verb = 'Saved' }) {
       body: JSON.stringify({ config: collectConfig() }),
     });
     renderConfig(config);
-    setMsg(msg, `✓ ${verb} — scheduler updated`, 'ok');
+    setMsg(msg, `✓ ${verb}`, 'ok');
     refreshStatus();
   } catch (err) {
     setMsg(msg, `✕ ${err.message}`, 'err');
@@ -1207,8 +1211,7 @@ function renderStatus(s) {
 
   // Pause/resume toggle reflects the current state.
   PAUSED = Boolean(s.paused);
-  const pauseBtn = $('#pause-toggle');
-  if (pauseBtn) pauseBtn.textContent = PAUSED ? 'Resume scheduler' : 'Pause scheduler';
+  setPauseLabel(PAUSED);
 
   // records table (filtered by the header search box)
   LAST_RECORDS = s.records || [];
@@ -1402,6 +1405,15 @@ async function updateNow() {
     label.textContent = 'Update now';
     refreshStatus();
   }
+}
+
+// Full label on desktop, short on mobile (keeps the dashboard action row on one line).
+function setPauseLabel(paused) {
+  const btn = $('#pause-toggle');
+  if (!btn) return;
+  const full = paused ? 'Resume scheduler' : 'Pause scheduler';
+  const short = paused ? 'Resume' : 'Pause';
+  btn.innerHTML = `<span class="sm:hidden">${short}</span><span class="hidden sm:inline">${full}</span>`;
 }
 
 async function togglePause() {
