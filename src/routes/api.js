@@ -3,9 +3,11 @@ import {
   saveConfig,
   redactConfig,
   mergeIncomingConfig,
+  normalizeConfig,
   IP_PROVIDERS_V4,
   IP_PROVIDERS_V6,
 } from '../config.js';
+import { buildImportPreview } from '../import.js';
 import { listZones, listAccountLists } from '../cloudflare.js';
 import { getState, applyLogConfig } from '../state.js';
 import { enabledTargetFqdns, reconcileRecords } from '../updater.js';
@@ -107,6 +109,53 @@ export default async function apiRoutes(app) {
   // --- Manual trigger for a single zone ---
   app.post('/api/zones/:id/update', auth, async (req) => {
     return triggerNow({ accountId: req.params.id });
+  });
+
+  // --- Import zones from an upstream cloudflare-ddns config.json ---
+  // Preview: map + resolve zone names, flag skips/duplicates. Never saves.
+  app.post('/api/zones/import/preview', auth, async (req, reply) => {
+    const raw = req.body?.config;
+    if (raw == null) return reply.code(400).send({ error: 'No config provided' });
+    const cfg = await loadConfig();
+    const existing = new Set(cfg.cloudflare.map((a) => a.zone_id));
+    let items;
+    try {
+      items = await buildImportPreview(raw, existing);
+    } catch (err) {
+      return reply.code(400).send({ error: `Could not parse config: ${err.message}` });
+    }
+    // Strip the mapped account (holds the token) from the preview response.
+    return { items: items.map(({ account, ...rest }) => rest) };
+  });
+
+  // Commit: re-map server-side and merge importable zones (dedupe by zone_id).
+  app.post('/api/zones/import', auth, async (req, reply) => {
+    const raw = req.body?.config;
+    if (raw == null) return reply.code(400).send({ error: 'No config provided' });
+    const existing = await loadConfig();
+    const existingIds = new Set(existing.cloudflare.map((a) => a.zone_id));
+    let items;
+    try {
+      items = await buildImportPreview(raw, existingIds);
+    } catch (err) {
+      return reply.code(400).send({ error: `Could not parse config: ${err.message}` });
+    }
+    const toAdd = items.filter((it) => it.ok && it.account).map((it) => it.account);
+    const merged = normalizeConfig({
+      ...existing,
+      cloudflare: [...existing.cloudflare, ...toAdd],
+    });
+    await saveConfig(merged);
+    applySchedule(merged);
+    applyLogConfig(merged);
+    reconcileRecords(merged);
+    if (toAdd.length && !merged.scheduler_paused) triggerNow().catch(() => {});
+    return {
+      ok: true,
+      imported: toAdd.length,
+      skipped: items.length - toAdd.length,
+      config: redactConfig(merged),
+    };
   });
 
   // --- WAF: verify a token + list the account's IP lists ---
