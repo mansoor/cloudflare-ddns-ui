@@ -59,6 +59,33 @@
       <main class="mx-auto max-w-5xl px-4 py-6">
         <!-- ============ DASHBOARD ============ -->
         <section id="tab-dashboard" class="space-y-6">
+          <!-- First-run onboarding: shown until any zone/WAF/DDNS is configured -->
+          <div id="onboarding" class="card hidden space-y-4 p-5">
+            <div>
+              <h2 class="text-base font-semibold">👋 Welcome to Cloudflare DDNS+</h2>
+              <p class="mt-1 text-sm text-slate-500">Nothing is configured yet. Add a zone in the
+                <button type="button" id="onboarding-to-zones" class="font-medium text-brand-600 hover:underline dark:text-brand-400">Zones</button>
+                tab — or, if you're coming from <b>cloudflare-ddns</b>, migrate your existing setup below.</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+              <h3 class="text-sm font-semibold">Migrate from cloudflare-ddns</h3>
+              <p class="mt-0.5 text-xs text-slate-500">Paste or upload your <code class="rounded bg-slate-100 px-1 dark:bg-slate-700">config.json</code>. We map the Cloudflare zones (token, zone, subdomains) into this app and resolve each zone name from your token; other settings are ignored.</p>
+              <textarea id="import-config" rows="6" class="input mt-3 font-mono text-xs" placeholder='{ "cloudflare": [ { "authentication": { "api_token": "…" }, "zone_id": "…", "subdomains": [ … ] } ] }'></textarea>
+              <div class="mt-3 flex flex-wrap items-center gap-3">
+                <button type="button" id="import-preview-btn" class="btn-primary">Preview import</button>
+                <label class="btn-secondary cursor-pointer">
+                  Upload config.json
+                  <input type="file" id="import-file" accept="application/json,.json" class="hidden" />
+                </label>
+                <span id="import-msg" class="text-sm"></span>
+              </div>
+              <div id="import-preview" class="mt-4 hidden space-y-3">
+                <div id="import-preview-list" class="space-y-1.5 text-sm"></div>
+                <button type="button" id="import-commit-btn" class="btn-primary">Import zones</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Status cards -->
           <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <div class="card p-4">

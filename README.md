@@ -23,6 +23,7 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 ## Features
 
 - 🖥️ **Web UI** — no JSON editing; add zones and subdomains through forms
+- 📥 **Migrate from cloudflare-ddns** — a first-run panel imports your existing `config.json` (paste or upload); it maps the Cloudflare zones (token, zone, subdomains) and resolves each zone name from your token
 - 🔐 **Login-protected** — single admin account (session cookie + bcrypt)
 - 🌐 **IPv4 + IPv6** — independent providers (`cloudflare.trace`, `ipify`, custom URL, or off)
 - ⏱️ **Scheduler** — configurable interval, runs on startup, "Update now" button, and a **Pause/Resume** toggle (the paused state persists across restarts)

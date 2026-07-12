@@ -281,6 +281,94 @@ function renderConfig(cfg) {
   renderWaf(cfg.waf_lists || []);
   renderNotifications(cfg.notifications || { events: {}, channels: [] });
   renderDdns(cfg.ddns_providers || []);
+  updateOnboarding(cfg);
+}
+
+// Show the first-run onboarding/migration panel until something is configured.
+function updateOnboarding(cfg) {
+  const empty =
+    (cfg.cloudflare || []).length === 0 &&
+    (cfg.waf_lists || []).length === 0 &&
+    (cfg.ddns_providers || []).length === 0;
+  $('#onboarding').classList.toggle('hidden', !empty);
+}
+
+function renderImportPreview(items) {
+  const wrap = $('#import-preview-list');
+  const commit = $('#import-commit-btn');
+  const importable = items.filter((i) => i.ok).length;
+  if (!items.length) {
+    wrap.innerHTML = '<p class="text-slate-500">No Cloudflare zones found in that config.</p>';
+  } else {
+    wrap.innerHTML = items
+      .map((i) => {
+        const icon = i.ok ? '✅' : i.duplicate ? '↔️' : '⚠️';
+        const name = esc(i.zone_name || i.zone_id || '(unknown zone)');
+        const subs = i.ok && i.subdomains ? ` · ${i.subdomains.length} subdomain(s)` : '';
+        const reason = i.reason ? ` — <span class="text-slate-500">${esc(i.reason)}</span>` : '';
+        return `<div class="${i.ok ? '' : 'text-slate-500'}">${icon} <span class="font-medium">${name}</span>${subs}${reason}</div>`;
+      })
+      .join('');
+  }
+  commit.textContent = importable ? `Import ${importable} zone${importable === 1 ? '' : 's'}` : 'Nothing to import';
+  commit.classList.toggle('hidden', importable === 0);
+  $('#import-preview').classList.remove('hidden');
+}
+
+async function previewImport() {
+  const msg = $('#import-msg');
+  const raw = $('#import-config').value.trim();
+  if (!raw) return setMsg(msg, '✕ Paste or upload a config.json first.', 'err');
+  const btn = $('#import-preview-btn');
+  btn.disabled = true;
+  setMsg(msg, 'Checking config + verifying tokens…', 'info');
+  try {
+    const res = await api('/api/zones/import/preview', {
+      method: 'POST',
+      body: JSON.stringify({ config: raw }),
+    });
+    renderImportPreview(res.items || []);
+    setMsg(msg, '', 'info');
+  } catch (err) {
+    setMsg(msg, `✕ ${err.message}`, 'err');
+    $('#import-preview').classList.add('hidden');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function commitImport() {
+  const msg = $('#import-msg');
+  const raw = $('#import-config').value.trim();
+  if (!raw) return;
+  const btn = $('#import-commit-btn');
+  btn.disabled = true;
+  setMsg(msg, 'Importing…', 'info');
+  try {
+    const res = await api('/api/zones/import', { method: 'POST', body: JSON.stringify({ config: raw }) });
+    setMsg(msg, `✓ Imported ${res.imported} zone(s)${res.skipped ? `, skipped ${res.skipped}` : ''}.`, 'ok');
+    $('#import-config').value = '';
+    $('#import-preview').classList.add('hidden');
+    await loadConfig(); // re-render zones + hide onboarding
+    refreshStatus();
+  } catch (err) {
+    setMsg(msg, `✕ ${err.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function handleImportFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    $('#import-config').value = String(reader.result || '');
+    setMsg($('#import-msg'), `Loaded ${file.name} — click “Preview import”.`, 'info');
+  };
+  reader.onerror = () => setMsg($('#import-msg'), '✕ Could not read that file.', 'err');
+  reader.readAsText(file);
+  e.target.value = ''; // allow re-selecting the same file
 }
 
 // Show the in-memory row count OR the file-name + retention fields, depending
@@ -1423,6 +1511,11 @@ async function init() {
   $('#ip4-provider').addEventListener('change', () => toggleCustom('#ip4-provider', '#ip4-custom'));
   $('#ip6-provider').addEventListener('change', () => toggleCustom('#ip6-provider', '#ip6-custom'));
   $('#log-persistent').addEventListener('change', toggleLogFields);
+  // Onboarding / import-from-cloudflare-ddns
+  $('#onboarding-to-zones').addEventListener('click', () => $('[data-tab="zones"]').click());
+  $('#import-preview-btn').addEventListener('click', previewImport);
+  $('#import-commit-btn').addEventListener('click', commitImport);
+  $('#import-file').addEventListener('change', handleImportFile);
 
   await loadConfig();
   await refreshStatus();
