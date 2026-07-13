@@ -1139,8 +1139,9 @@ function updateHeartbeatSummary(node) {
 function toggleHeartbeatHint(node) {
   const hint = $('.hb-url-hint', node);
   const isCustom = $('.hb-type', node).value === 'custom';
-  hint.textContent = isCustom
-    ? 'Include {status} (up/down) and/or {message}; without {status} it pings only on success.'
+  const code = (t) => `<code class="rounded bg-slate-100 px-1 dark:bg-slate-700">${t}</code>`;
+  hint.innerHTML = isCustom
+    ? `Include ${code('{status}')} (up/down) and/or ${code('{message}')} to also signal failures; without ${code('{status}')} it pings only on success.`
     : '';
   hint.classList.toggle('hidden', !isCustom);
 }

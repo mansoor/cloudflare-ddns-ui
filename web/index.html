@@ -402,7 +402,7 @@
               <div class="flex items-start justify-between gap-3">
                 <div>
                   <h2 class="text-sm font-semibold">Heartbeat monitoring</h2>
-                  <p class="text-xs text-slate-500">Ping an uptime monitor after each scheduled run — it alerts you if this updater stops. Supports <b>Healthchecks.io</b>, <b>Uptime Kuma</b>, <b>Better Stack</b>, or a <b>Custom URL</b>. For Custom, include <code class="rounded bg-slate-100 px-1 dark:bg-slate-700">{status}</code> (up/down) and/or <code class="rounded bg-slate-100 px-1 dark:bg-slate-700">{message}</code> to also signal failures; without <code class="rounded bg-slate-100 px-1 dark:bg-slate-700">{status}</code> it pings only on success.</p>
+                  <p class="text-xs text-slate-500">Ping an uptime monitor after each scheduled run — it alerts you if this updater stops, in case of app crash and notification can't be sent. Supports <b>Healthchecks.io</b>, <b>Uptime Kuma</b>, <b>Better Stack</b>, and a <b>Custom URL</b>.</p>
                 </div>
                 <button type="button" id="add-heartbeat" class="btn-add shrink-0 text-xs">+ Add monitor</button>
               </div>
