@@ -161,12 +161,38 @@ function makeSubRow(node, sub = { name: '', proxied: false }) {
   const row = $('#sub-template').content.firstElementChild.cloneNode(true);
   $('.sub-name', row).value = sub.name || '';
   $('.sub-proxied', row).checked = Boolean(sub.proxied);
+  $('.sub-a', row).checked = sub.a !== false;
+  $('.sub-aaaa', row).checked = sub.aaaa !== false;
   $('.sub-name', row).addEventListener('input', () => updateAccountSummary(node));
   $('.sub-remove', row).addEventListener('click', () => {
     row.remove();
     updateAccountSummary(node);
   });
+  applySubFamilyState(row);
   return row;
+}
+
+// Grey out a subdomain's A / AAAA checkbox when that family is switched off
+// globally (in Settings), so it's clear why it won't apply.
+function applySubFamilyState(root = document) {
+  const aOn = $('#opt-a')?.checked !== false;
+  const aaaaOn = Boolean($('#opt-aaaa')?.checked);
+  $$('.sub-a', root).forEach((c) => {
+    c.disabled = !aOn;
+    const lbl = c.closest('.sub-a-label');
+    if (lbl) {
+      lbl.classList.toggle('opacity-40', !aOn);
+      lbl.title = aOn ? '' : 'Enable “Manage A (IPv4)” in Settings first';
+    }
+  });
+  $$('.sub-aaaa', root).forEach((c) => {
+    c.disabled = !aaaaOn;
+    const lbl = c.closest('.sub-aaaa-label');
+    if (lbl) {
+      lbl.classList.toggle('opacity-40', !aaaaOn);
+      lbl.title = aaaaOn ? '' : 'Enable “Manage AAAA (IPv6)” in Settings first';
+    }
+  });
 }
 
 // Refresh the collapsed-header summary from the row's current field values.
@@ -326,6 +352,7 @@ function renderConfig(cfg) {
 
   $('#opt-a').checked = cfg.a;
   $('#opt-aaaa').checked = cfg.aaaa;
+  applySubFamilyState(); // reflect the global A/AAAA switches on subdomain rows
   $('#opt-ttl').value = cfg.ttl;
   $('#opt-interval').value = cfg.update_interval_minutes;
   $('#opt-purge').checked = cfg.purge_unknown_records;
@@ -510,6 +537,8 @@ function collectConfig() {
     const subdomains = $$('.acc-subs .sub', node).map((s) => ({
       name: $('.sub-name', s).value.trim(),
       proxied: $('.sub-proxied', s).checked,
+      a: $('.sub-a', s).checked,
+      aaaa: $('.sub-aaaa', s).checked,
     }));
     return {
       id: node.dataset.id || undefined,
@@ -1700,6 +1729,8 @@ async function init() {
   document.addEventListener('click', () => statusMenu.classList.add('hidden'));
   $('#ip4-provider').addEventListener('change', () => toggleIpProvider('#ip4-provider', '#ip4-custom', '#ip4-iface'));
   $('#ip6-provider').addEventListener('change', () => toggleIpProvider('#ip6-provider', '#ip6-custom', '#ip6-iface'));
+  $('#opt-a').addEventListener('change', () => applySubFamilyState());
+  $('#opt-aaaa').addEventListener('change', () => applySubFamilyState());
   $('#log-persistent').addEventListener('change', toggleLogFields);
   // Onboarding / import-from-cloudflare-ddns
   $('#onboarding-to-zones').addEventListener('click', () => $('[data-tab="zones"]').click());

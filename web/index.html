@@ -776,8 +776,14 @@
 
     <!-- Subdomain row template -->
     <template id="sub-template">
-      <div class="sub flex items-center gap-2">
-        <input class="input sub-name" placeholder="www (or empty for root)" />
+      <div class="sub flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <input class="input sub-name min-w-0 flex-1" placeholder="www (or empty for root)" />
+        <label class="sub-a-label flex items-center gap-1 whitespace-nowrap text-xs text-slate-500">
+          <input type="checkbox" class="sub-a h-4 w-4 rounded border-slate-300" /> A
+        </label>
+        <label class="sub-aaaa-label flex items-center gap-1 whitespace-nowrap text-xs text-slate-500">
+          <input type="checkbox" class="sub-aaaa h-4 w-4 rounded border-slate-300" /> AAAA
+        </label>
         <label class="flex items-center gap-1 whitespace-nowrap text-xs text-slate-500">
           <input type="checkbox" class="sub-proxied h-4 w-4 rounded border-slate-300" /> Proxied
         </label>

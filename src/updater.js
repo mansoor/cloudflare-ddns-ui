@@ -56,8 +56,8 @@ export function disabledRecords(cfg) {
     for (const sub of acc.subdomains || []) {
       const fqdn = buildFqdn(sub.name, acc.zone_name);
       const proxied = Boolean(sub.proxied);
-      if (cfg.a) out.push({ fqdn, type: 'A', proxied, status: 'disabled', detail: 'zone disabled', at });
-      if (cfg.aaaa) out.push({ fqdn, type: 'AAAA', proxied, status: 'disabled', detail: 'zone disabled', at });
+      if (cfg.a && sub.a !== false) out.push({ fqdn, type: 'A', proxied, status: 'disabled', detail: 'zone disabled', at });
+      if (cfg.aaaa && sub.aaaa !== false) out.push({ fqdn, type: 'AAAA', proxied, status: 'disabled', detail: 'zone disabled', at });
     }
   }
   if (DDNS_ENABLED) {
@@ -293,8 +293,8 @@ export async function runUpdate(
       for (const sub of acc.subdomains) {
         const proxied = Boolean(sub.proxied);
         const plans = [];
-        if (cfg.a && ipv4) plans.push({ type: 'A', ip: ipv4 });
-        if (cfg.aaaa && ipv6) plans.push({ type: 'AAAA', ip: ipv6 });
+        if (cfg.a && ipv4 && sub.a !== false) plans.push({ type: 'A', ip: ipv4 });
+        if (cfg.aaaa && ipv6 && sub.aaaa !== false) plans.push({ type: 'AAAA', ip: ipv6 });
 
         for (const plan of plans) {
           try {

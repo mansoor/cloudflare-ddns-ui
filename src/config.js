@@ -222,10 +222,17 @@ function normalizeAccount(acc) {
     api_token: String(acc?.api_token || ''),
     zone_id: String(acc?.zone_id || ''),
     zone_name: String(acc?.zone_name || ''),
-    subdomains: subdomains.map((s) => ({
-      name: normalizeSubName(typeof s === 'string' ? s : s?.name),
-      proxied: Boolean(typeof s === 'string' ? false : s?.proxied),
-    })),
+    subdomains: subdomains.map((s) => {
+      const o = typeof s === 'string' ? { name: s } : s || {};
+      return {
+        name: normalizeSubName(o.name),
+        proxied: Boolean(o.proxied),
+        // Which record types to manage for this host (narrowed by the global
+        // a/aaaa switches at run time). Default on for back-compat.
+        a: o.a !== false,
+        aaaa: o.aaaa !== false,
+      };
+    }),
   };
 }
 
