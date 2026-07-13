@@ -10,6 +10,7 @@ import { notifyAll } from './notify.js';
 import { updateDdnsProvider } from './ddns.js';
 import { DDNS_ENABLED } from './features.js';
 import { isCloudflareIP } from './cfips.js';
+import { sendHeartbeats } from './heartbeat.js';
 
 // Build the fully-qualified domain name for a subdomain within a zone.
 function buildFqdn(subName, zoneName) {
@@ -419,6 +420,20 @@ export async function runUpdate(
 
     // 5) Notifications (best-effort; never affect the run result).
     await dispatchNotifications(cfg, { result, message, records, ipv4, ipv6 }).catch(() => {});
+
+    // 6) Heartbeat / uptime monitors — only for full runs (a per-item update
+    // isn't a liveness signal). Best-effort.
+    if (isFullRun && cfg.heartbeats?.length) {
+      const hbResults = await sendHeartbeats(cfg.heartbeats, {
+        ok: result === 'ok',
+        message,
+      }).catch(() => []);
+      for (const { hb, result: res } of hbResults) {
+        const who = `${hb.type} (${hb.label || 'monitor'})`;
+        if (res.ok) state.log('info', `Heartbeat ${who} pinged`);
+        else state.log('warn', `Heartbeat ${who} failed: ${res.error}`);
+      }
+    }
 
     return { result, message, records };
   } catch (err) {

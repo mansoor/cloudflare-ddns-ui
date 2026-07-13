@@ -31,6 +31,7 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - 🛡️ **WAF / IP Lists** — keep a Cloudflare account-level IP List updated with your current IP, to reference in firewall rules
 - 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS, FreeDNS, & generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, …) behind a flag
 - 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, on update failures, IP changes, and/or successful record changes (each toggleable)
+- 💓 **Heartbeat monitoring** — ping **Healthchecks.io** or **Uptime Kuma** after each run so you're alerted if the updater ever stops
 - 🎨 **Light / Dark / System** theme
 - ✅ **Idempotent** — only touches records that actually changed
 - 🛟 **Safe by default** — refuses to write a **Cloudflare-owned IP** into a record (guards against a mis-detected IP), and **tags the records it manages** so "purge" only ever removes its own — never records you created elsewhere

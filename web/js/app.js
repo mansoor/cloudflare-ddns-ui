@@ -344,6 +344,7 @@ function renderConfig(cfg) {
   renderLogSettings(cfg.log || {});
   renderWaf(cfg.waf_lists || []);
   renderNotifications(cfg.notifications || { events: {}, channels: [] });
+  renderHeartbeats(cfg.heartbeats || []);
   renderDdns(cfg.ddns_providers || []);
   updateOnboarding(cfg);
 }
@@ -539,6 +540,7 @@ function collectConfig() {
     ip6_iface: $('#ip6-iface').value,
     waf_lists: collectWaf(),
     notifications: collectNotifications(),
+    heartbeats: collectHeartbeats(),
     ddns_providers: collectDdns(),
     log: {
       persistent: $('#log-persistent').checked,
@@ -942,6 +944,72 @@ function collectNotifications() {
     },
     channels,
   };
+}
+
+// ---------- heartbeat monitors ----------
+function updateHeartbeatsEmpty() {
+  $('#heartbeats-empty').classList.toggle('hidden', $$('#heartbeats .heartbeat').length > 0);
+}
+
+function makeHeartbeatRow(hb = {}) {
+  const node = $('#heartbeat-template').content.firstElementChild.cloneNode(true);
+  node.dataset.id = hb.id || '';
+  $('.hb-type', node).value = hb.type || 'healthchecks';
+  $('.hb-label', node).value = hb.label || '';
+  $('.hb-enabled', node).checked = hb.enabled !== false;
+  const urlInput = $('.hb-url', node);
+  if (hb.url_hint) {
+    urlInput.placeholder = `•••• stored (…${hb.url_hint}) — leave blank to keep`;
+    node.dataset.hasUrl = '1';
+  }
+  $('.hb-remove', node).addEventListener('click', () => {
+    node.remove();
+    updateHeartbeatsEmpty();
+  });
+  $('.hb-test', node).addEventListener('click', () => testHeartbeat(node));
+  return node;
+}
+
+function renderHeartbeats(list) {
+  const wrap = $('#heartbeats');
+  wrap.innerHTML = '';
+  (list || []).forEach((hb) => wrap.appendChild(makeHeartbeatRow(hb)));
+  updateHeartbeatsEmpty();
+}
+
+function collectHeartbeats() {
+  return $$('#heartbeats .heartbeat').map((node) => {
+    const urlVal = $('.hb-url', node).value.trim();
+    return {
+      id: node.dataset.id || undefined,
+      type: $('.hb-type', node).value,
+      enabled: $('.hb-enabled', node).checked,
+      label: $('.hb-label', node).value.trim(),
+      url: urlVal || (node.dataset.hasUrl ? REDACTED : ''),
+    };
+  });
+}
+
+async function testHeartbeat(node) {
+  const msg = $('.hb-msg', node);
+  const set = (t, cls) => {
+    msg.textContent = t;
+    msg.className = `hb-msg text-xs ${cls}`;
+  };
+  if (!node.dataset.id) {
+    set('Save settings first, then test.', 'text-red-600 dark:text-red-400');
+    setTimeout(() => set('', ''), 5000);
+    return;
+  }
+  set('Pinging…', 'text-slate-500');
+  try {
+    await api('/api/heartbeats/test', { method: 'POST', body: JSON.stringify({ heartbeatId: node.dataset.id }) });
+    set('✓ Pinged', 'text-green-600 dark:text-green-400');
+  } catch (err) {
+    set(`✕ ${err.message}`, 'text-red-600 dark:text-red-400');
+  } finally {
+    setTimeout(() => set('', ''), 6000);
+  }
 }
 
 // ---------- DDNS providers (opt-in) ----------
@@ -1607,6 +1675,10 @@ async function init() {
   $('#add-channel').addEventListener('click', () => {
     $('#channels').appendChild(makeChannelRow({}, { expanded: true }));
     updateChannelsEmpty();
+  });
+  $('#add-heartbeat').addEventListener('click', () => {
+    $('#heartbeats').appendChild(makeHeartbeatRow({ enabled: true }));
+    updateHeartbeatsEmpty();
   });
   $('#add-ddns').addEventListener('click', () => {
     $('#ddns-list').appendChild(makeDdnsRow({}, { expanded: true }));
