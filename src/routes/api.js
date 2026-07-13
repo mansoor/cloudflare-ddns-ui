@@ -8,6 +8,7 @@ import {
   IP_PROVIDERS_V6,
 } from '../config.js';
 import { buildImportPreview } from '../import.js';
+import { buildBackup, looksLikePlusConfig, parseRestore } from '../backup.js';
 import { listZones, listAccountLists } from '../cloudflare.js';
 import { listInterfaces } from '../ip.js';
 import { getState, applyLogConfig } from '../state.js';
@@ -19,6 +20,21 @@ import { sendHeartbeat } from '../heartbeat.js';
 import { updateDdnsProvider } from '../ddns.js';
 import { features } from '../features.js';
 import { getVersionInfo } from '../version.js';
+
+const PLUS_BACKUP_NOTICE =
+  'This looks like a Cloudflare DDNS+ backup, not an upstream cloudflare-ddns config. ' +
+  'Use Settings → Backup & restore → Restore to import it.';
+
+// Tolerantly decide whether a pasted/uploaded blob is one of our own
+// configs/backups (so the upstream importer can steer the user to Restore).
+function isPlusBackup(raw) {
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return looksLikePlusConfig(obj);
+  } catch {
+    return false; // unparseable — let the normal importer report the error
+  }
+}
 
 export default async function apiRoutes(app) {
   // --- Auth ---
@@ -123,6 +139,9 @@ export default async function apiRoutes(app) {
   app.post('/api/zones/import/preview', auth, async (req, reply) => {
     const raw = req.body?.config;
     if (raw == null) return reply.code(400).send({ error: 'No config provided' });
+    // If they pasted a Cloudflare DDNS+ config/backup by mistake, don't silently
+    // import only its zones — point them at Settings → Backup & restore.
+    if (isPlusBackup(raw)) return { items: [], notice: PLUS_BACKUP_NOTICE };
     const cfg = await loadConfig();
     const existing = new Set(cfg.cloudflare.map((a) => a.zone_id));
     let items;
@@ -139,6 +158,7 @@ export default async function apiRoutes(app) {
   app.post('/api/zones/import', auth, async (req, reply) => {
     const raw = req.body?.config;
     if (raw == null) return reply.code(400).send({ error: 'No config provided' });
+    if (isPlusBackup(raw)) return reply.code(400).send({ error: PLUS_BACKUP_NOTICE });
     const existing = await loadConfig();
     const existingIds = new Set(existing.cloudflare.map((a) => a.zone_id));
     let items;
@@ -243,6 +263,54 @@ export default async function apiRoutes(app) {
   app.post('/api/ddns/:id/update', auth, async (req, reply) => {
     if (!features.ddns) return reply.code(404).send({ error: 'DDNS providers are disabled' });
     return triggerNow({ ddnsId: req.params.id });
+  });
+
+  // --- Config backup (download) — password-gated because it contains real
+  // secrets in plaintext, unlike everything else the UI hands to the browser. ---
+  app.post('/api/config/export', auth, async (req, reply) => {
+    const { password } = req.body || {};
+    if (!app.verifyPassword(password)) {
+      return reply.code(403).send({ error: 'Incorrect password' });
+    }
+    const cfg = await loadConfig();
+    const backup = buildBackup(cfg);
+    const stamp = backup._exported_at.slice(0, 10); // YYYY-MM-DD
+    return reply
+      .header('Content-Type', 'application/json; charset=utf-8')
+      .header('Content-Disposition', `attachment; filename="cloudflare-ddns-plus-backup-${stamp}.json"`)
+      .send(JSON.stringify(backup, null, 2));
+  });
+
+  // --- Config restore (full overwrite) — password + a typed confirmation, since
+  // it replaces the entire configuration. ---
+  app.post('/api/config/restore', auth, async (req, reply) => {
+    const { password, confirm, config } = req.body || {};
+    if (!app.verifyPassword(password)) {
+      return reply.code(403).send({ error: 'Incorrect password' });
+    }
+    if (String(confirm || '').trim() !== 'REPLACE') {
+      return reply.code(400).send({ error: 'Type REPLACE to confirm the overwrite' });
+    }
+    if (config == null) return reply.code(400).send({ error: 'No backup provided' });
+    let incoming;
+    try {
+      incoming = parseRestore(config);
+    } catch (err) {
+      return reply.code(400).send({ error: `Could not read backup: ${err.message}` });
+    }
+    const existing = await loadConfig();
+    // mergeIncomingConfig gives a full structural overwrite while restoring any
+    // secret left as the redacted placeholder from disk (real backups carry real
+    // secrets, so nothing is lost). It pins scheduler_paused to the existing
+    // value; a restore should reflect the backup, so set it back.
+    const merged = mergeIncomingConfig(existing, incoming);
+    merged.scheduler_paused = Boolean(incoming.scheduler_paused);
+    await saveConfig(merged);
+    applySchedule(merged);
+    applyLogConfig(merged);
+    reconcileRecords(merged);
+    if (!merged.scheduler_paused) triggerNow().catch(() => {});
+    return { ok: true, config: redactConfig(merged) };
   });
 
   // --- Pause / resume the scheduler ---

@@ -66,6 +66,12 @@ export async function registerAuth(app) {
     return bcrypt.compareSync(String(password || ''), admin.passwordHash);
   });
 
+  // Re-check just the admin password (no username) — used to gate sensitive,
+  // already-authenticated actions like exporting or restoring the full config.
+  app.decorate('verifyPassword', (password) =>
+    bcrypt.compareSync(String(password || ''), admin.passwordHash)
+  );
+
   // preHandler guard for protected routes.
   app.decorate('requireAuth', function (req, reply, done) {
     if (req.session.get('user')) return done();

@@ -39,6 +39,7 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - 🛟 **Safe by default** — refuses to write a **Cloudflare-owned IP** into a record (guards against a mis-detected IP), and **tags the records it manages** so "purge" only ever removes its own — never records you created elsewhere
 - 🔎 **Live dashboard** — current IPs, per-record status, collapsible per-update activity log
 - 🗒️ **Activity log storage** — in-memory by default (configurable row cap); optionally persist to a file under `/data` (JSONL) with a nightly retention prune
+- 💾 **Backup & restore** — download your whole config as a file, or restore one onto another instance (password-gated; restore needs a typed confirmation since it overwrites everything)
 - 🐳 **Docker-ready** — published image, config persisted to a volume
 
 ## Quick start
@@ -171,6 +172,23 @@ Enable it by setting `ENABLE_OTHER_DDNS=true`; a **DDNS** tab appears. Then **Ad
 
 **Test** does a live update and shows the provider's response. When off, the tab is hidden and these
 providers are never contacted — your Cloudflare setup is completely unaffected either way.
+
+## Backup & restore
+
+**Settings → Backup & restore** lets you move a configuration between instances without touching the
+server's filesystem:
+
+- **Download backup** — writes the whole config to a JSON file (`cloudflare-ddns-plus-backup-<date>.json`).
+  It's gated behind your admin password because, unlike everything else the UI shows, the file contains
+  your **API tokens and passwords in plaintext** — store it somewhere safe.
+- **Restore from backup** — paste or upload a backup and it **overwrites the entire configuration**
+  (zones, tokens, WAF lists, notifications, everything). It requires your password **and** typing
+  `REPLACE`, since it can't be undone. A redacted backup (secrets left as the `••••` placeholder) keeps
+  whatever is already on disk for those fields.
+
+> Copying `data/config.json` between servers directly does exactly the same thing and never exposes
+> secrets to your browser — this feature is purely for convenience. Pasting a Cloudflare DDNS+ backup
+> into the first-run **Migrate** panel is detected and redirected here instead of importing only its zones.
 
 ## Notes & limitations
 

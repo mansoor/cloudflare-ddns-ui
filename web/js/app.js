@@ -426,6 +426,11 @@ async function previewImport() {
       method: 'POST',
       body: JSON.stringify({ config: raw }),
     });
+    if (res.notice) {
+      renderImportNotice(res.notice);
+      setMsg(msg, '', 'info');
+      return;
+    }
     renderImportPreview(res.items || []);
     setMsg(msg, '', 'info');
   } catch (err) {
@@ -468,6 +473,125 @@ function handleImportFile(e) {
   reader.onerror = () => setMsg($('#import-msg'), '✕ Could not read that file.', 'err');
   reader.readAsText(file);
   e.target.value = ''; // allow re-selecting the same file
+}
+
+// Shown when the wizard is fed a Cloudflare DDNS+ backup instead of an upstream
+// config — steer the user to Settings → Backup & restore rather than importing
+// only its zones.
+function renderImportNotice(text) {
+  $('#import-preview-list').innerHTML =
+    `<div class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">${esc(text)}</div>`;
+  $('#import-commit-btn').classList.add('hidden');
+  $('#import-preview').classList.remove('hidden');
+}
+
+// ---------- backup & restore ----------
+
+function filenameFromDisposition(header) {
+  const m = /filename="?([^"]+)"?/i.exec(header || '');
+  return m ? m[1] : '';
+}
+
+function triggerDownload(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function exportBackup() {
+  const pw = $('#backup-export-pw');
+  const msg = $('#backup-export-msg');
+  const btn = $('#backup-export-btn');
+  if (!pw.value) return setMsg(msg, '✕ Enter your password.', 'err');
+  btn.disabled = true;
+  setMsg(msg, 'Preparing backup…', 'info');
+  try {
+    // Not via api(): a success returns a file download, not JSON.
+    const res = await fetch('/api/config/export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw.value }),
+    });
+    if (res.status === 401) return void (window.location.href = '/login');
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    triggerDownload(
+      blob,
+      filenameFromDisposition(res.headers.get('Content-Disposition')) || 'cloudflare-ddns-plus-backup.json'
+    );
+    pw.value = '';
+    setMsg(msg, '✓ Backup downloaded.', 'ok');
+  } catch (err) {
+    setMsg(msg, `✕ ${err.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => setMsg(msg, '', 'info'), 6000);
+  }
+}
+
+async function restoreBackup() {
+  const cfgEl = $('#backup-restore-config');
+  const pw = $('#backup-restore-pw');
+  const confirmEl = $('#backup-restore-confirm');
+  const msg = $('#backup-restore-msg');
+  const btn = $('#backup-restore-btn');
+  const raw = cfgEl.value.trim();
+  if (!raw) return setMsg(msg, '✕ Paste or upload a backup first.', 'err');
+  if (!pw.value) return setMsg(msg, '✕ Enter your password.', 'err');
+  if (confirmEl.value.trim() !== 'REPLACE') return setMsg(msg, '✕ Type REPLACE to confirm.', 'err');
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return setMsg(msg, '✕ That is not valid JSON.', 'err');
+  }
+  const ok = await confirmDialog({
+    title: 'Overwrite entire configuration?',
+    message:
+      'This replaces every zone, token, and setting on this instance with the backup. It cannot be undone.',
+    confirmLabel: 'Overwrite',
+    danger: true,
+  });
+  if (!ok) return;
+  btn.disabled = true;
+  setMsg(msg, 'Restoring…', 'info');
+  try {
+    await api('/api/config/restore', {
+      method: 'POST',
+      body: JSON.stringify({ password: pw.value, confirm: confirmEl.value.trim(), config: parsed }),
+    });
+    cfgEl.value = '';
+    pw.value = '';
+    confirmEl.value = '';
+    setMsg(msg, '✓ Configuration restored.', 'ok');
+    await loadConfig(); // re-render every tab from the restored config
+    refreshStatus();
+  } catch (err) {
+    setMsg(msg, `✕ ${err.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function handleRestoreFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    $('#backup-restore-config').value = String(reader.result || '');
+    setMsg($('#backup-restore-msg'), `Loaded ${file.name}.`, 'info');
+  };
+  reader.onerror = () => setMsg($('#backup-restore-msg'), '✕ Could not read that file.', 'err');
+  reader.readAsText(file);
+  e.target.value = '';
 }
 
 // Show the in-memory row count OR the file-name + retention fields, depending
@@ -1821,6 +1945,10 @@ async function init() {
   $('#import-preview-btn').addEventListener('click', previewImport);
   $('#import-commit-btn').addEventListener('click', commitImport);
   $('#import-file').addEventListener('change', handleImportFile);
+  // Backup & restore
+  $('#backup-export-btn').addEventListener('click', exportBackup);
+  $('#backup-restore-btn').addEventListener('click', restoreBackup);
+  $('#backup-restore-file').addEventListener('change', handleRestoreFile);
 
   await loadConfig();
   await refreshStatus();
