@@ -423,7 +423,10 @@ export async function runUpdate(
     // Full runs show the complete picture, including "disabled" rows; scoped
     // (per-item) runs only touch their own scope.
     const isFullRun = !accountId && !wafId && !ddnsId;
-    state.setRecords(isFullRun ? [...records, ...disabledRecords(cfg)] : records);
+    // A full run owns the whole table (incl. disabled rows). A scoped per-item
+    // run only refreshes its own rows and must not drop the other targets.
+    if (isFullRun) state.setRecords([...records, ...disabledRecords(cfg)]);
+    else state.mergeRecords(records);
     const result = hadError ? 'partial' : 'ok';
     const message = hadError
       ? 'Completed with some errors — see the activity log'
