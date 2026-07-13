@@ -430,7 +430,8 @@ export async function runUpdate(
       }).catch(() => []);
       for (const { hb, result: res } of hbResults) {
         const who = `${hb.type} (${hb.label || 'monitor'})`;
-        if (res.ok) state.log('info', `Heartbeat ${who} pinged`);
+        if (res.skipped) state.log('info', `Heartbeat ${who} — no ping (failure signalled via timeout)`);
+        else if (res.ok) state.log('info', `Heartbeat ${who} pinged`);
         else state.log('warn', `Heartbeat ${who} failed: ${res.error}`);
       }
     }
