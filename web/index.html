@@ -365,6 +365,14 @@
               </div>
             </div>
 
+            <!-- Saves the settings above (record options, IP detection, schedule,
+                 activity log). Notifications, heartbeats, and backup each save on
+                 their own below. -->
+            <div class="flex items-center gap-3">
+              <button type="submit" class="btn-primary" id="save-btn">Save settings</button>
+              <span id="save-msg" class="text-sm"></span>
+            </div>
+
             <!-- Notifications -->
             <div class="card space-y-4 p-4">
               <div>
@@ -384,6 +392,10 @@
                   <input type="checkbox" id="notif-success" class="h-4 w-4 rounded border-slate-300" />
                   On <b>successful changes</b>
                 </label>
+              </div>
+              <div class="flex items-center gap-3">
+                <button type="button" class="btn-primary text-sm" id="notif-events-save">Save preferences</button>
+                <span id="notif-events-msg" class="text-sm"></span>
               </div>
               <div class="border-t border-slate-200 pt-3 dark:border-slate-700">
                 <div class="mb-2 flex items-center justify-between">
@@ -410,11 +422,6 @@
               <div id="heartbeats-empty" class="rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center text-xs text-slate-500 dark:border-slate-600">
                 No monitors yet. Add one to get an alert if updates stop running.
               </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-              <button type="submit" class="btn-primary" id="save-btn">Save settings</button>
-              <span id="save-msg" class="text-sm"></span>
             </div>
 
             <!-- Backup & restore (independent of Save settings) -->

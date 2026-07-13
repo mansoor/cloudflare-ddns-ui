@@ -1910,6 +1910,9 @@ async function init() {
     $('#waf-lists').appendChild(makeWafRow({}, { expanded: true }));
     updateWafEmpty();
   });
+  $('#notif-events-save').addEventListener('click', () =>
+    saveConfig({ btn: $('#notif-events-save'), msg: $('#notif-events-msg'), verb: 'Saved' })
+  );
   $('#add-channel').addEventListener('click', () => {
     $('#channels').appendChild(makeChannelRow({}, { expanded: true }));
     updateChannelsEmpty();
