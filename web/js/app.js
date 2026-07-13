@@ -114,8 +114,10 @@ function applyFeatures() {
 
 const PROVIDER_LABELS = {
   'cloudflare.trace': 'Cloudflare (trace)',
+  'cloudflare.doh': 'Cloudflare (DoH)',
   ipify: 'ipify',
   local: 'This machine (local)',
+  literal: 'Static IP',
   custom: 'Custom URL',
   none: 'Off',
 };
@@ -365,8 +367,10 @@ function renderConfig(cfg) {
   $('#ip6-custom').value = cfg.ip6_custom_url || '';
   fillIfaceSelect($('#ip4-iface'), 4, cfg.ip4_iface || '');
   fillIfaceSelect($('#ip6-iface'), 6, cfg.ip6_iface || '');
-  toggleIpProvider('#ip4-provider', '#ip4-custom', '#ip4-iface');
-  toggleIpProvider('#ip6-provider', '#ip6-custom', '#ip6-iface');
+  $('#ip4-literal').value = cfg.ip4_literal || '';
+  $('#ip6-literal').value = cfg.ip6_literal || '';
+  toggleIpProvider('#ip4-provider', '#ip4-custom', '#ip4-iface', '#ip4-literal');
+  toggleIpProvider('#ip6-provider', '#ip6-custom', '#ip6-iface', '#ip6-literal');
 
   renderLogSettings(cfg.log || {});
   renderWaf(cfg.waf_lists || []);
@@ -520,11 +524,13 @@ function renderNotifications(n) {
   updateChannelsEmpty();
 }
 
-// Show the custom-URL input for 'custom', or the interface picker for 'local'.
-function toggleIpProvider(selSel, customSel, ifaceSel) {
+// Reveal the extra field for the chosen provider: custom URL, interface
+// picker ('local'), or the static-IP input ('literal').
+function toggleIpProvider(selSel, customSel, ifaceSel, literalSel) {
   const v = $(selSel).value;
   $(customSel).classList.toggle('hidden', v !== 'custom');
   $(ifaceSel).classList.toggle('hidden', v !== 'local');
+  $(literalSel).classList.toggle('hidden', v !== 'literal');
 }
 
 const REDACTED = '__stored__';
@@ -564,9 +570,11 @@ function collectConfig() {
     ip4_provider: $('#ip4-provider').value,
     ip4_custom_url: $('#ip4-custom').value.trim(),
     ip4_iface: $('#ip4-iface').value,
+    ip4_literal: $('#ip4-literal').value.trim(),
     ip6_provider: $('#ip6-provider').value,
     ip6_custom_url: $('#ip6-custom').value.trim(),
     ip6_iface: $('#ip6-iface').value,
+    ip6_literal: $('#ip6-literal').value.trim(),
     waf_lists: collectWaf(),
     notifications: collectNotifications(),
     heartbeats: collectHeartbeats(),
@@ -1727,8 +1735,8 @@ async function init() {
     c.addEventListener('change', () => renderRecords(LAST_RECORDS))
   );
   document.addEventListener('click', () => statusMenu.classList.add('hidden'));
-  $('#ip4-provider').addEventListener('change', () => toggleIpProvider('#ip4-provider', '#ip4-custom', '#ip4-iface'));
-  $('#ip6-provider').addEventListener('change', () => toggleIpProvider('#ip6-provider', '#ip6-custom', '#ip6-iface'));
+  $('#ip4-provider').addEventListener('change', () => toggleIpProvider('#ip4-provider', '#ip4-custom', '#ip4-iface', '#ip4-literal'));
+  $('#ip6-provider').addEventListener('change', () => toggleIpProvider('#ip6-provider', '#ip6-custom', '#ip6-iface', '#ip6-literal'));
   $('#opt-a').addEventListener('change', () => applySubFamilyState());
   $('#opt-aaaa').addEventListener('change', () => applySubFamilyState());
   $('#log-persistent').addEventListener('change', toggleLogFields);

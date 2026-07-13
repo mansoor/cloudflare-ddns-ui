@@ -28,6 +28,59 @@ function parseTrace(body) {
   return line ? line.slice(3).trim() : '';
 }
 
+// --- Cloudflare DoH "what's my IP" ---
+// whoami.cloudflare (class CHAOS, type TXT) returns the querying client's IP.
+// It only works over DoH *wireformat* (the JSON API can't express class CH),
+// queried directly against 1.1.1.1 / 2606:4700:4700::1111 so the source IP is
+// the right family.
+function encodeDnsQuery(name, type, cls) {
+  const header = Buffer.alloc(12);
+  header.writeUInt16BE(0x0100, 2); // RD; id 0 per DoH guidance
+  header.writeUInt16BE(1, 4); // QDCOUNT
+  const labels = name
+    .split('.')
+    .map((l) => Buffer.concat([Buffer.from([l.length]), Buffer.from(l, 'ascii')]));
+  const q = Buffer.alloc(4);
+  q.writeUInt16BE(type, 0);
+  q.writeUInt16BE(cls, 2);
+  return Buffer.concat([header, ...labels, Buffer.from([0]), q]);
+}
+
+function parseFirstTxt(buf) {
+  let off = 12;
+  while (off < buf.length && buf[off] !== 0) off += buf[off] + 1; // question name
+  off += 1 + 4; // null terminator + qtype + qclass
+  if (off < buf.length && (buf[off] & 0xc0) === 0xc0) off += 2; // answer name (usually a pointer)
+  else {
+    while (off < buf.length && buf[off] !== 0) off += buf[off] + 1;
+    off += 1;
+  }
+  off += 2 + 2 + 4 + 2; // type + class + ttl + rdlength
+  const txtLen = buf[off];
+  return buf.toString('ascii', off + 1, off + 1 + txtLen).trim();
+}
+
+async function dohMyIP(version) {
+  const host = version === 6 ? '[2606:4700:4700::1111]' : '1.1.1.1';
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const res = await fetch(`https://${host}/dns-query`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/dns-message', accept: 'application/dns-message' },
+      body: encodeDnsQuery('whoami.cloudflare', 16, 3), // TXT, class CHAOS
+      redirect: 'follow',
+      signal: ctrl.signal,
+    });
+    if (!res.ok) throw new Error(`DoH HTTP ${res.status}`);
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 12 || buf.readUInt16BE(6) < 1) throw new Error('DoH returned no answer');
+    return parseFirstTxt(buf);
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 function validate(ip, version) {
   if (!ip) throw new Error('empty IP response');
   if (version === 4 && !V4_RE.test(ip)) throw new Error(`not a valid IPv4: ${ip}`);
@@ -87,12 +140,13 @@ function ifaceIP(version, name) {
 
 /**
  * @param {number} version 4 | 6
- * @param {string} provider 'cloudflare.trace' | 'ipify' | 'local' | 'custom' | 'none'
+ * @param {string} provider 'cloudflare.trace' | 'cloudflare.doh' | 'ipify' | 'local' | 'literal' | 'custom' | 'none'
  * @param {string} customUrl used when provider === 'custom'
  * @param {string} iface interface name when provider === 'local' (blank = default route)
+ * @param {string} literal fixed IP when provider === 'literal'
  * @returns {Promise<string|null>} the IP, or null when provider is 'none'
  */
-export async function detectIP(version, provider, customUrl = '', iface = '') {
+export async function detectIP(version, provider, customUrl = '', iface = '', literal = '') {
   if (provider === 'none') return null;
 
   let raw;
@@ -100,11 +154,18 @@ export async function detectIP(version, provider, customUrl = '', iface = '') {
     case 'cloudflare.trace':
       raw = parseTrace(await fetchText(version === 4 ? TRACE_V4 : TRACE_V6));
       break;
+    case 'cloudflare.doh':
+      raw = await dohMyIP(version);
+      break;
     case 'ipify':
       raw = await fetchText(version === 4 ? IPIFY_V4 : IPIFY_V6);
       break;
     case 'local':
       raw = iface ? ifaceIP(version, iface) : await routedLocalIP(version);
+      break;
+    case 'literal':
+      if (!literal) throw new Error('static IP provider selected but no IP set');
+      raw = String(literal).trim();
       break;
     case 'custom':
       if (!customUrl) throw new Error('custom IP provider selected but no URL configured');

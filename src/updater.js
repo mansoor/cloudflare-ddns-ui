@@ -11,13 +11,26 @@ import { updateDdnsProvider } from './ddns.js';
 import { DDNS_ENABLED } from './features.js';
 import { isCloudflareIP } from './cfips.js';
 import { sendHeartbeats } from './heartbeat.js';
+import { domainToASCII } from 'node:url';
+
+// Convert an internationalized (Unicode) domain to ASCII/punycode for the API.
+// A no-op for plain ASCII; preserves a leading "*." wildcard label.
+function toAsciiFqdn(fqdn) {
+  if (!fqdn) return fqdn;
+  const wildcard = fqdn.startsWith('*.');
+  const base = wildcard ? fqdn.slice(2) : fqdn;
+  const ascii = domainToASCII(base) || base; // domainToASCII returns '' on failure
+  return wildcard ? `*.${ascii}` : ascii;
+}
 
 // Build the fully-qualified domain name for a subdomain within a zone.
 function buildFqdn(subName, zoneName) {
   const n = String(subName || '').trim();
-  if (n === '' || n === '@') return zoneName;
-  if (n === '*') return `*.${zoneName}`;
-  return `${n}.${zoneName}`;
+  let fqdn;
+  if (n === '' || n === '@') fqdn = zoneName;
+  else if (n === '*') fqdn = `*.${zoneName}`;
+  else fqdn = `${n}.${zoneName}`;
+  return toAsciiFqdn(fqdn);
 }
 
 // Display label + host for a non-Cloudflare DDNS provider (also the record fqdn).
@@ -249,7 +262,7 @@ export async function runUpdate(
 
     if (cfg.a) {
       try {
-        ipv4 = await detectIP(4, cfg.ip4_provider, cfg.ip4_custom_url, cfg.ip4_iface);
+        ipv4 = await detectIP(4, cfg.ip4_provider, cfg.ip4_custom_url, cfg.ip4_iface, cfg.ip4_literal);
         if (cfg.reject_cloudflare_ips && isCloudflareIP(ipv4)) {
           hadError = true;
           state.log('error', `Detected IPv4 ${ipv4} belongs to Cloudflare — refusing to use it (check your IP provider). Skipping A records.`);
@@ -265,7 +278,7 @@ export async function runUpdate(
     }
     if (cfg.aaaa) {
       try {
-        ipv6 = await detectIP(6, cfg.ip6_provider, cfg.ip6_custom_url, cfg.ip6_iface);
+        ipv6 = await detectIP(6, cfg.ip6_provider, cfg.ip6_custom_url, cfg.ip6_iface, cfg.ip6_literal);
         if (cfg.reject_cloudflare_ips && isCloudflareIP(ipv6)) {
           hadError = true;
           state.log('error', `Detected IPv6 ${ipv6} belongs to Cloudflare — refusing to use it (check your IP provider). Skipping AAAA records.`);
