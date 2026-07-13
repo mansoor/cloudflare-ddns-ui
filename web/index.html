@@ -309,11 +309,23 @@
                   <label class="label" for="opt-interval">Update every (minutes)</label>
                   <input class="input" id="opt-interval" type="number" min="1" max="1440" />
                 </div>
-                <label class="flex items-start gap-2 text-sm sm:pt-6">
+                <div>
+                  <label class="label" for="opt-record-comment">Managed-record comment</label>
+                  <input class="input" id="opt-record-comment" placeholder="cf-ddns-plus" maxlength="100" />
+                  <p class="mt-1 text-xs text-slate-500">Stamped on records this tool manages. Purge only ever removes records carrying this comment (leave blank to disable tagging &amp; purge).</p>
+                </div>
+                <label class="flex items-start gap-2 text-sm">
+                  <input type="checkbox" id="opt-reject-cf" class="mt-0.5 h-4 w-4 rounded border-slate-300" />
+                  <span>
+                    <b>Reject Cloudflare IPs</b>
+                    <span class="block text-xs text-slate-500">Refuse to write a Cloudflare-owned IP into a record (guards against a mis-detected IP breaking your domain).</span>
+                  </span>
+                </label>
+                <label class="flex items-start gap-2 text-sm">
                   <input type="checkbox" id="opt-purge" class="mt-0.5 h-4 w-4 rounded border-slate-300" />
                   <span>
                     <b>Purge unknown records</b>
-                    <span class="block text-xs text-slate-500">Deletes A/AAAA records in each zone that aren't listed in the Zones tab. Use with care.</span>
+                    <span class="block text-xs text-slate-500">Deletes records this tool previously managed (matching the comment above) once you remove them from the Zones tab. Never touches records created elsewhere.</span>
                   </span>
                 </label>
               </div>

@@ -33,6 +33,7 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, on update failures, IP changes, and/or successful record changes (each toggleable)
 - 🎨 **Light / Dark / System** theme
 - ✅ **Idempotent** — only touches records that actually changed
+- 🛟 **Safe by default** — refuses to write a **Cloudflare-owned IP** into a record (guards against a mis-detected IP), and **tags the records it manages** so "purge" only ever removes its own — never records you created elsewhere
 - 🔎 **Live dashboard** — current IPs, per-record status, collapsible per-update activity log
 - 🗒️ **Activity log storage** — in-memory by default (configurable row cap); optionally persist to a file under `/data` (JSONL) with a nightly retention prune
 - 🐳 **Docker-ready** — published image, config persisted to a volume

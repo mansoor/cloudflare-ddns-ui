@@ -9,6 +9,7 @@ import { getLastIPs, setLastIPs } from './runtime.js';
 import { notifyAll } from './notify.js';
 import { updateDdnsProvider } from './ddns.js';
 import { DDNS_ENABLED } from './features.js';
+import { isCloudflareIP } from './cfips.js';
 
 // Build the fully-qualified domain name for a subdomain within a zone.
 function buildFqdn(subName, zoneName) {
@@ -88,7 +89,7 @@ function recordMatches(existing, { content, proxied, ttl }) {
   );
 }
 
-async function syncOne({ token, zoneId, zoneName, subName, type, ip, proxied, ttl }) {
+async function syncOne({ token, zoneId, zoneName, subName, type, ip, proxied, ttl, comment }) {
   const fqdn = buildFqdn(subName, zoneName);
   const desired = {
     type,
@@ -97,6 +98,8 @@ async function syncOne({ token, zoneId, zoneName, subName, type, ip, proxied, tt
     proxied,
     ttl: proxied ? 1 : ttl,
   };
+  // Tag records we manage so purge can safely target only our own records.
+  if (comment) desired.comment = comment;
 
   const existing = (await cf.listRecords(token, zoneId, { type, name: fqdn }))[0];
 
@@ -119,16 +122,21 @@ async function syncOne({ token, zoneId, zoneName, subName, type, ip, proxied, tt
   };
 }
 
-// Optional cleanup: remove A/AAAA records in the zone that aren't managed here.
-async function purgeUnknown({ token, zoneId, zoneName, managedFqdns, types }) {
+// Optional cleanup: remove records this tool previously managed (tagged with our
+// comment) that are no longer in the desired set. Records without our comment —
+// i.e. anything created outside this tool — are never touched. Requires a
+// configured record_comment; without one, purge is a safe no-op.
+async function purgeUnknown({ token, zoneId, zoneName, managedFqdns, types, comment }) {
   const removed = [];
+  if (!comment) return removed;
   for (const type of types) {
     const all = await cf.listRecords(token, zoneId, { type });
     for (const rec of all) {
-      if (!managedFqdns.has(`${type}:${rec.name}`)) {
+      const ours = (rec.comment || '') === comment;
+      if (ours && !managedFqdns.has(`${type}:${rec.name}`)) {
         await cf.deleteRecord(token, zoneId, rec.id);
         removed.push({ fqdn: rec.name, type, status: 'deleted', detail: `purged ${type} ${rec.name}` });
-        state.log('warn', `Purged unmanaged ${type} record ${rec.name}`);
+        state.log('warn', `Purged managed ${type} record ${rec.name}`);
       }
     }
   }
@@ -241,8 +249,14 @@ export async function runUpdate(
     if (cfg.a) {
       try {
         ipv4 = await detectIP(4, cfg.ip4_provider, cfg.ip4_custom_url);
-        state.setIPs({ v4: ipv4 });
-        state.log('info', `Detected IPv4: ${ipv4} (${cfg.ip4_provider})`);
+        if (cfg.reject_cloudflare_ips && isCloudflareIP(ipv4)) {
+          hadError = true;
+          state.log('error', `Detected IPv4 ${ipv4} belongs to Cloudflare — refusing to use it (check your IP provider). Skipping A records.`);
+          ipv4 = null;
+        } else {
+          state.setIPs({ v4: ipv4 });
+          state.log('info', `Detected IPv4: ${ipv4} (${cfg.ip4_provider})`);
+        }
       } catch (err) {
         hadError = true;
         state.log('error', `IPv4 detection failed: ${err.message}`);
@@ -251,8 +265,14 @@ export async function runUpdate(
     if (cfg.aaaa) {
       try {
         ipv6 = await detectIP(6, cfg.ip6_provider, cfg.ip6_custom_url);
-        state.setIPs({ v6: ipv6 });
-        state.log('info', `Detected IPv6: ${ipv6} (${cfg.ip6_provider})`);
+        if (cfg.reject_cloudflare_ips && isCloudflareIP(ipv6)) {
+          hadError = true;
+          state.log('error', `Detected IPv6 ${ipv6} belongs to Cloudflare — refusing to use it (check your IP provider). Skipping AAAA records.`);
+          ipv6 = null;
+        } else {
+          state.setIPs({ v6: ipv6 });
+          state.log('info', `Detected IPv6: ${ipv6} (${cfg.ip6_provider})`);
+        }
       } catch (err) {
         hadError = true;
         state.log('error', `IPv6 detection failed: ${err.message}`);
@@ -286,6 +306,7 @@ export async function runUpdate(
               ip: plan.ip,
               proxied,
               ttl: cfg.ttl,
+              comment: cfg.record_comment,
             });
             managedFqdns.add(`${plan.type}:${r.fqdn}`);
             records.push({ ...r, at: new Date().toISOString() });
@@ -319,6 +340,7 @@ export async function runUpdate(
             zoneName: acc.zone_name,
             managedFqdns,
             types,
+            comment: cfg.record_comment,
           });
           for (const r of removed) records.push({ ...r, at: new Date().toISOString() });
         } catch (err) {

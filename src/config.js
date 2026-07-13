@@ -24,6 +24,8 @@ export function defaultConfig() {
     ip6_provider: 'none',
     ip6_custom_url: '',
     purge_unknown_records: false,
+    reject_cloudflare_ips: true, // refuse to write a Cloudflare-owned IP into a record
+    record_comment: 'cf-ddns-plus', // stamped on managed records; also gates safe purge
     update_interval_minutes: 5,
     scheduler_paused: false,
     waf_lists: [],
@@ -80,6 +82,9 @@ export function normalizeConfig(input) {
   cfg.a = Boolean(cfg.a);
   cfg.aaaa = Boolean(cfg.aaaa);
   cfg.purge_unknown_records = Boolean(cfg.purge_unknown_records);
+  cfg.reject_cloudflare_ips = cfg.reject_cloudflare_ips !== false; // default on
+  cfg.record_comment =
+    typeof cfg.record_comment === 'string' ? cfg.record_comment.trim().slice(0, 100) : 'cf-ddns-plus';
   cfg.scheduler_paused = Boolean(cfg.scheduler_paused);
   cfg.ttl = clampInt(cfg.ttl, 1, 86400, 300);
   cfg.update_interval_minutes = clampInt(cfg.update_interval_minutes, 1, 1440, 5);
