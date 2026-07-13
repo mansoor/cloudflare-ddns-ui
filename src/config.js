@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { DDNS_TYPES } from './ddns.js';
+import { HEARTBEAT_TYPES } from './heartbeat.js';
 
 export const DATA_DIR = path.resolve(process.env.DATA_DIR || './data');
 const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
@@ -35,6 +36,7 @@ export function defaultConfig() {
       events: { failure: true, ip_change: true, success: false },
       channels: [],
     },
+    heartbeats: [], // uptime monitors pinged after each full run
     ddns_providers: [],
     log: {
       persistent: false, // default: in-memory only
@@ -101,6 +103,7 @@ export function normalizeConfig(input) {
   cfg.cloudflare = Array.isArray(cfg.cloudflare) ? cfg.cloudflare.map(normalizeAccount) : [];
   cfg.waf_lists = Array.isArray(cfg.waf_lists) ? cfg.waf_lists.map(normalizeWaf) : [];
   cfg.notifications = normalizeNotifications(cfg.notifications);
+  cfg.heartbeats = Array.isArray(cfg.heartbeats) ? cfg.heartbeats.map(normalizeHeartbeat) : [];
   cfg.ddns_providers = Array.isArray(cfg.ddns_providers)
     ? cfg.ddns_providers.map(normalizeDdnsProvider)
     : [];
@@ -200,6 +203,16 @@ function normalizeChannel(c) {
   };
 }
 
+function normalizeHeartbeat(h) {
+  return {
+    id: h?.id || randomUUID(),
+    type: HEARTBEAT_TYPES.includes(h?.type) ? h.type : 'healthchecks',
+    enabled: h?.enabled !== false, // default on
+    label: String(h?.label || ''),
+    url: String(h?.url || ''),
+  };
+}
+
 function normalizeAccount(acc) {
   const subdomains = Array.isArray(acc?.subdomains) ? acc.subdomains : [];
   return {
@@ -256,6 +269,11 @@ export function redactConfig(cfg) {
         auth_header_set: Boolean(c.auth_header),
       })),
     },
+    heartbeats: cfg.heartbeats.map((h) => ({
+      ...h,
+      url: h.url ? REDACTED_TOKEN : '',
+      url_hint: hint(h.url),
+    })),
     ddns_providers: cfg.ddns_providers.map((p) => ({
       ...p,
       token: p.token ? REDACTED_TOKEN : '',
@@ -300,6 +318,12 @@ export function mergeIncomingConfig(existing, incoming) {
       auth_header: restore(c.auth_header, prev?.auth_header),
     };
   });
+
+  const hbById = new Map(existing.heartbeats.map((h) => [h.id, h]));
+  merged.heartbeats = merged.heartbeats.map((h) => ({
+    ...h,
+    url: restore(h.url, hbById.get(h.id)?.url),
+  }));
 
   const ddnsById = new Map(existing.ddns_providers.map((p) => [p.id, p]));
   merged.ddns_providers = merged.ddns_providers.map((p) => {

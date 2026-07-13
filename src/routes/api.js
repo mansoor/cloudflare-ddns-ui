@@ -15,6 +15,7 @@ import { enabledTargetFqdns, reconcileRecords } from '../updater.js';
 import { applySchedule, setPaused, triggerNow } from '../scheduler.js';
 import { REDACTED_TOKEN } from '../config.js';
 import { sendNotification } from '../notify.js';
+import { sendHeartbeat } from '../heartbeat.js';
 import { updateDdnsProvider } from '../ddns.js';
 import { features } from '../features.js';
 import { getVersionInfo } from '../version.js';
@@ -201,6 +202,16 @@ export default async function apiRoutes(app) {
       ipv4: getState().currentIPv4,
       ipv6: getState().currentIPv6,
     });
+    return res.ok ? { ok: true } : reply.code(400).send({ error: res.error });
+  });
+
+  // --- Heartbeat / uptime monitor: send a test "up" ping ---
+  app.post('/api/heartbeats/test', auth, async (req, reply) => {
+    const { heartbeatId } = req.body || {};
+    const cfg = await loadConfig();
+    const hb = cfg.heartbeats.find((h) => h.id === heartbeatId);
+    if (!hb) return reply.code(404).send({ error: 'Monitor not found — save settings first' });
+    const res = await sendHeartbeat(hb, { ok: true, message: 'Cloudflare DDNS+ test ping ✅' });
     return res.ok ? { ok: true } : reply.code(400).send({ error: res.error });
   });
 
