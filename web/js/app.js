@@ -295,6 +295,8 @@ function renderConfig(cfg) {
   $('#opt-ttl').value = cfg.ttl;
   $('#opt-interval').value = cfg.update_interval_minutes;
   $('#opt-purge').checked = cfg.purge_unknown_records;
+  $('#opt-reject-cf').checked = cfg.reject_cloudflare_ips !== false;
+  $('#opt-record-comment').value = cfg.record_comment ?? 'cf-ddns-plus';
 
   fillProviderSelect($('#ip4-provider'), META.ip4_providers, cfg.ip4_provider);
   fillProviderSelect($('#ip6-provider'), META.ip6_providers, cfg.ip6_provider);
@@ -489,6 +491,8 @@ function collectConfig() {
     ttl: Number($('#opt-ttl').value) || 300,
     update_interval_minutes: Number($('#opt-interval').value) || 5,
     purge_unknown_records: $('#opt-purge').checked,
+    reject_cloudflare_ips: $('#opt-reject-cf').checked,
+    record_comment: $('#opt-record-comment').value.trim(),
     ip4_provider: $('#ip4-provider').value,
     ip4_custom_url: $('#ip4-custom').value.trim(),
     ip6_provider: $('#ip6-provider').value,
