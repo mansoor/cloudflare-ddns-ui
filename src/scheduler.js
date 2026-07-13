@@ -57,13 +57,23 @@ export async function startScheduler({ runOnStart = true } = {}) {
 
 // Start or stop the timer to match the config's paused flag + interval.
 export function applySchedule(cfg) {
-  intervalMinutes = clampMinutes(cfg.update_interval_minutes);
+  const newInterval = clampMinutes(cfg.update_interval_minutes);
   if (cfg.scheduler_paused) {
     stopScheduler();
-  } else {
-    active = true;
-    armTimer();
+    return;
   }
+  // If we're already running on the same interval, leave the current countdown
+  // alone. Re-arming here would push "next update" out to a fresh full interval
+  // on every unrelated config save (saving a zone, WAF list, channel, etc.).
+  // Only (re)arm when starting up, resuming from pause, or when the interval
+  // actually changed.
+  if (active && timer && newInterval === intervalMinutes) {
+    state.setScheduler({ active: true, paused: false, intervalMinutes });
+    return;
+  }
+  intervalMinutes = newInterval;
+  active = true;
+  armTimer();
 }
 
 export function reschedule(minutes) {
