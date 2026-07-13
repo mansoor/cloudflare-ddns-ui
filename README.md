@@ -28,6 +28,7 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - 🌐 **IPv4 + IPv6** — independent providers: `cloudflare.trace`, `ipify`, **this machine's own interface** (default route or a named interface — good for public-IPv6 hosts / VPS / CGNAT), a custom URL, or off
 - ⏱️ **Scheduler** — configurable interval, runs on startup, "Update now" button, and a **Pause/Resume** toggle (the paused state persists across restarts)
 - 🎯 **Per-zone update & enable/disable** — an "Update" badge syncs just one zone on demand; toggle a zone off to park it without deleting
+- 🎚️ **Per-subdomain record types** — global A/AAAA master switches, narrowed per host (e.g. one subdomain dual-stack, another IPv4-only)
 - 🛡️ **WAF / IP Lists** — keep a Cloudflare account-level IP List updated with your current IP, to reference in firewall rules
 - 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS, FreeDNS, & generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, …) behind a flag
 - 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, on update failures, IP changes, and/or successful record changes (each toggleable)
