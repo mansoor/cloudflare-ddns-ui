@@ -248,7 +248,7 @@ export async function runUpdate(
 
     if (cfg.a) {
       try {
-        ipv4 = await detectIP(4, cfg.ip4_provider, cfg.ip4_custom_url);
+        ipv4 = await detectIP(4, cfg.ip4_provider, cfg.ip4_custom_url, cfg.ip4_iface);
         if (cfg.reject_cloudflare_ips && isCloudflareIP(ipv4)) {
           hadError = true;
           state.log('error', `Detected IPv4 ${ipv4} belongs to Cloudflare — refusing to use it (check your IP provider). Skipping A records.`);
@@ -264,7 +264,7 @@ export async function runUpdate(
     }
     if (cfg.aaaa) {
       try {
-        ipv6 = await detectIP(6, cfg.ip6_provider, cfg.ip6_custom_url);
+        ipv6 = await detectIP(6, cfg.ip6_provider, cfg.ip6_custom_url, cfg.ip6_iface);
         if (cfg.reject_cloudflare_ips && isCloudflareIP(ipv6)) {
           hadError = true;
           state.log('error', `Detected IPv6 ${ipv6} belongs to Cloudflare — refusing to use it (check your IP provider). Skipping AAAA records.`);

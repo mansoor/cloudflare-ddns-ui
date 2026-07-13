@@ -9,6 +9,7 @@ import {
 } from '../config.js';
 import { buildImportPreview } from '../import.js';
 import { listZones, listAccountLists } from '../cloudflare.js';
+import { listInterfaces } from '../ip.js';
 import { getState, applyLogConfig } from '../state.js';
 import { enabledTargetFqdns, reconcileRecords } from '../updater.js';
 import { applySchedule, setPaused, triggerNow } from '../scheduler.js';
@@ -48,7 +49,12 @@ export default async function apiRoutes(app) {
     const cfg = await loadConfig();
     return {
       config: redactConfig(cfg),
-      meta: { ip4_providers: IP_PROVIDERS_V4, ip6_providers: IP_PROVIDERS_V6, features },
+      meta: {
+        ip4_providers: IP_PROVIDERS_V4,
+        ip6_providers: IP_PROVIDERS_V6,
+        interfaces: listInterfaces(),
+        features,
+      },
     };
   });
 

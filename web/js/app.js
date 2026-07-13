@@ -101,7 +101,7 @@ function setNavOpen(open) {
 }
 
 // ---------- settings rendering ----------
-let META = { ip4_providers: [], ip6_providers: [], features: {} };
+let META = { ip4_providers: [], ip6_providers: [], interfaces: [], features: {} };
 let PAUSED = false; // last-known scheduler paused state (from /api/status)
 let LAST_RECORDS = []; // most recent records, so the filter can re-apply instantly
 
@@ -112,15 +112,49 @@ function applyFeatures() {
   if (btn) btn.classList.toggle('hidden', !on);
 }
 
+const PROVIDER_LABELS = {
+  'cloudflare.trace': 'Cloudflare (trace)',
+  ipify: 'ipify',
+  local: 'This machine (local)',
+  custom: 'Custom URL',
+  none: 'Off',
+};
+
 function fillProviderSelect(sel, providers, value) {
   sel.innerHTML = '';
   for (const p of providers) {
     const opt = document.createElement('option');
     opt.value = p;
-    opt.textContent = p === 'cloudflare.trace' ? 'Cloudflare (trace)' : p;
+    opt.textContent = PROVIDER_LABELS[p] || p;
     sel.appendChild(opt);
   }
   sel.value = value;
+}
+
+// Interface picker for the "local" provider: "Auto (default route)" + each
+// interface that has an address of the right family.
+function fillIfaceSelect(sel, version, value) {
+  sel.innerHTML = '';
+  const auto = document.createElement('option');
+  auto.value = '';
+  auto.textContent = 'Auto (default route)';
+  sel.appendChild(auto);
+  for (const ifc of META.interfaces || []) {
+    const addr = (ifc.addresses || []).find((a) => a.family === version);
+    if (!addr) continue;
+    const opt = document.createElement('option');
+    opt.value = ifc.name;
+    opt.textContent = `${ifc.name} (${addr.address})`;
+    sel.appendChild(opt);
+  }
+  // Keep a saved interface selectable even if it's not currently present.
+  if (value && !Array.from(sel.options).some((o) => o.value === value)) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = `${value} (not found)`;
+    sel.appendChild(opt);
+  }
+  sel.value = value || '';
 }
 
 function makeSubRow(node, sub = { name: '', proxied: false }) {
@@ -302,8 +336,10 @@ function renderConfig(cfg) {
   fillProviderSelect($('#ip6-provider'), META.ip6_providers, cfg.ip6_provider);
   $('#ip4-custom').value = cfg.ip4_custom_url || '';
   $('#ip6-custom').value = cfg.ip6_custom_url || '';
-  toggleCustom('#ip4-provider', '#ip4-custom');
-  toggleCustom('#ip6-provider', '#ip6-custom');
+  fillIfaceSelect($('#ip4-iface'), 4, cfg.ip4_iface || '');
+  fillIfaceSelect($('#ip6-iface'), 6, cfg.ip6_iface || '');
+  toggleIpProvider('#ip4-provider', '#ip4-custom', '#ip4-iface');
+  toggleIpProvider('#ip6-provider', '#ip6-custom', '#ip6-iface');
 
   renderLogSettings(cfg.log || {});
   renderWaf(cfg.waf_lists || []);
@@ -456,9 +492,11 @@ function renderNotifications(n) {
   updateChannelsEmpty();
 }
 
-function toggleCustom(selSel, customSel) {
-  const isCustom = $(selSel).value === 'custom';
-  $(customSel).classList.toggle('hidden', !isCustom);
+// Show the custom-URL input for 'custom', or the interface picker for 'local'.
+function toggleIpProvider(selSel, customSel, ifaceSel) {
+  const v = $(selSel).value;
+  $(customSel).classList.toggle('hidden', v !== 'custom');
+  $(ifaceSel).classList.toggle('hidden', v !== 'local');
 }
 
 const REDACTED = '__stored__';
@@ -495,8 +533,10 @@ function collectConfig() {
     record_comment: $('#opt-record-comment').value.trim(),
     ip4_provider: $('#ip4-provider').value,
     ip4_custom_url: $('#ip4-custom').value.trim(),
+    ip4_iface: $('#ip4-iface').value,
     ip6_provider: $('#ip6-provider').value,
     ip6_custom_url: $('#ip6-custom').value.trim(),
+    ip6_iface: $('#ip6-iface').value,
     waf_lists: collectWaf(),
     notifications: collectNotifications(),
     ddns_providers: collectDdns(),
@@ -1586,8 +1626,8 @@ async function init() {
     c.addEventListener('change', () => renderRecords(LAST_RECORDS))
   );
   document.addEventListener('click', () => statusMenu.classList.add('hidden'));
-  $('#ip4-provider').addEventListener('change', () => toggleCustom('#ip4-provider', '#ip4-custom'));
-  $('#ip6-provider').addEventListener('change', () => toggleCustom('#ip6-provider', '#ip6-custom'));
+  $('#ip4-provider').addEventListener('change', () => toggleIpProvider('#ip4-provider', '#ip4-custom', '#ip4-iface'));
+  $('#ip6-provider').addEventListener('change', () => toggleIpProvider('#ip6-provider', '#ip6-custom', '#ip6-iface'));
   $('#log-persistent').addEventListener('change', toggleLogFields);
   // Onboarding / import-from-cloudflare-ddns
   $('#onboarding-to-zones').addEventListener('click', () => $('[data-tab="zones"]').click());

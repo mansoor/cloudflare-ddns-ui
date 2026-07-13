@@ -10,8 +10,8 @@ const CONFIG_PATH = path.join(DATA_DIR, 'config.json');
 // this value back on save, we keep the token already stored on disk.
 export const REDACTED_TOKEN = '__stored__';
 
-export const IP_PROVIDERS_V4 = ['cloudflare.trace', 'ipify', 'custom', 'none'];
-export const IP_PROVIDERS_V6 = ['cloudflare.trace', 'ipify', 'custom', 'none'];
+export const IP_PROVIDERS_V4 = ['cloudflare.trace', 'ipify', 'local', 'custom', 'none'];
+export const IP_PROVIDERS_V6 = ['cloudflare.trace', 'ipify', 'local', 'custom', 'none'];
 
 export function defaultConfig() {
   return {
@@ -21,8 +21,10 @@ export function defaultConfig() {
     ttl: 300,
     ip4_provider: 'cloudflare.trace',
     ip4_custom_url: '',
+    ip4_iface: '', // interface name when ip4_provider === 'local' (blank = default route)
     ip6_provider: 'none',
     ip6_custom_url: '',
+    ip6_iface: '',
     purge_unknown_records: false,
     reject_cloudflare_ips: true, // refuse to write a Cloudflare-owned IP into a record
     record_comment: 'cf-ddns-plus', // stamped on managed records; also gates safe purge
@@ -93,6 +95,8 @@ export function normalizeConfig(input) {
   if (!IP_PROVIDERS_V6.includes(cfg.ip6_provider)) cfg.ip6_provider = 'none';
   cfg.ip4_custom_url = String(cfg.ip4_custom_url || '');
   cfg.ip6_custom_url = String(cfg.ip6_custom_url || '');
+  cfg.ip4_iface = String(cfg.ip4_iface || '').trim();
+  cfg.ip6_iface = String(cfg.ip6_iface || '').trim();
 
   cfg.cloudflare = Array.isArray(cfg.cloudflare) ? cfg.cloudflare.map(normalizeAccount) : [];
   cfg.waf_lists = Array.isArray(cfg.waf_lists) ? cfg.waf_lists.map(normalizeWaf) : [];
