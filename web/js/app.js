@@ -587,9 +587,9 @@ function handleRestoreFile(e) {
   const reader = new FileReader();
   reader.onload = () => {
     $('#backup-restore-config').value = String(reader.result || '');
-    setMsg($('#backup-restore-msg'), `Loaded ${file.name}.`, 'info');
+    setMsg($('#backup-restore-file-msg'), `Loaded ${file.name}.`, 'info');
   };
-  reader.onerror = () => setMsg($('#backup-restore-msg'), '✕ Could not read that file.', 'err');
+  reader.onerror = () => setMsg($('#backup-restore-file-msg'), '✕ Could not read that file.', 'err');
   reader.readAsText(file);
   e.target.value = '';
 }
