@@ -5,7 +5,7 @@
 import * as cf from './cloudflare.js';
 import { detectIP } from './ip.js';
 import * as state from './state.js';
-import { getLastIPs, setLastIPs } from './runtime.js';
+import { getLastIPs, setLastIPs, getDdnsSent, setDdnsSent } from './runtime.js';
 import { notifyAll } from './notify.js';
 import { updateDdnsProvider } from './ddns.js';
 import { DDNS_ENABLED } from './features.js';
@@ -399,8 +399,35 @@ export async function runUpdate(
       if (!p.enabled) continue;
       const typeLabel = ddnsTypeLabel(p.type);
       const host = ddnsHost(p);
+      const targetIPs = { ipv4: cfg.a ? ipv4 : null, ipv6: cfg.aaaa ? ipv6 : null };
+
+      // Custom URL services usually reply "OK" whether or not anything changed
+      // (and often ask you not to update when your IP is the same). Track the
+      // last IPs we sent per provider so we can report "unchanged" and skip the
+      // needless request. Only when we actually have an IP to compare — if none
+      // is detected, keep sending so an auto-detecting endpoint still works.
+      const haveIP = Boolean(targetIPs.ipv4 || targetIPs.ipv6);
+      const genericSig =
+        p.type === 'generic'
+          ? (p.urls || []).map((u) => (typeof u === 'string' ? u : u?.url || '')).join('|')
+          : null;
+      if (p.type === 'generic' && haveIP) {
+        const sent = await getDdnsSent(p.id);
+        if (sent && sent.v4 === targetIPs.ipv4 && sent.v6 === targetIPs.ipv6 && sent.sig === genericSig) {
+          records.push({
+            fqdn: host || p.label || typeLabel,
+            type: typeLabel,
+            status: 'unchanged',
+            detail: `Custom URL ${p.label || 'endpoint'}: no IP change since last update`,
+            at: new Date().toISOString(),
+          });
+          state.log('info', `${typeLabel} ${host || p.label || ''}: unchanged (no IP change)`, { status: 'unchanged' });
+          continue;
+        }
+      }
+
       try {
-        const r = await updateDdnsProvider(p, { ipv4: cfg.a ? ipv4 : null, ipv6: cfg.aaaa ? ipv6 : null });
+        const r = await updateDdnsProvider(p, targetIPs);
         records.push({
           fqdn: host || p.label || typeLabel,
           type: typeLabel,
@@ -409,6 +436,9 @@ export async function runUpdate(
           at: new Date().toISOString(),
         });
         if (r.ok) {
+          if (p.type === 'generic' && haveIP) {
+            await setDdnsSent(p.id, { v4: targetIPs.ipv4, v6: targetIPs.ipv6, sig: genericSig });
+          }
           state.log(r.status === 'unchanged' ? 'info' : 'success', r.detail, { status: r.status });
         } else {
           hadError = true;
