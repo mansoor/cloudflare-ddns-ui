@@ -2,7 +2,7 @@
 // Each updater returns { ok, status, detail } and never throws.
 // status: 'updated' | 'unchanged' | 'error'.
 
-export const DDNS_TYPES = ['duckdns', 'dyndns2', 'freedns'];
+export const DDNS_TYPES = ['duckdns', 'dyndns2', 'freedns', 'generic'];
 
 // Collapse a response body to a short, safe snippet for error messages — never
 // dump a full HTML error page (e.g. a provider's 503 page) into the log.
@@ -177,6 +177,61 @@ async function updateFreeDns(p, { ipv4, ipv6 }) {
   };
 }
 
+// --- Generic Custom URL ---
+// A list of full update URLs (like FreeDNS's URL method) for the many simple
+// "GET this URL" services — freemyip, dynv6, Google Domains, Namecheap, etc.
+// Each URL may use {ip}/{ip4}/{ip6} placeholders; substitution is skipped when
+// the URL has none (the provider then auto-detects the caller's IP). Success =
+// HTTP 2xx whose body doesn't start with a known error word; the body snippet
+// is surfaced either way since these services have no single response format.
+function subPlaceholders(url, ipv4, ipv6) {
+  return url
+    .replace(/\{ip4\}/gi, ipv4 || '')
+    .replace(/\{ip6\}/gi, ipv6 || '')
+    .replace(/\{ip\}/gi, ipv4 || ipv6 || '');
+}
+
+// Body starts with one of these → treat as an error even on HTTP 200 (freemyip
+// "ERROR", DuckDNS-style "KO", DynDNS2 "badauth"/"nohost"/"911", …).
+const GENERIC_ERROR_RE = /^(err|error|ko|bad|nohost|notfqdn|numhost|abuse|dnserr|fail|911|!)/i;
+const GENERIC_NOCHG_RE = /(nochg|no change|has not changed|unchanged|already)/i;
+
+async function hitGenericUrl(entry, ipv4, ipv6) {
+  const rawUrl = String(typeof entry === 'string' ? entry : entry?.url || '').trim();
+  const label = (typeof entry === 'string' ? '' : entry?.label || '').trim() || 'host';
+  const who = `Custom URL ${label}`;
+  if (!/^https?:\/\//i.test(rawUrl)) return { ok: false, status: 'error', detail: `${who}: not an http(s) URL` };
+
+  const r = await httpGet(subPlaceholders(rawUrl, ipv4, ipv6));
+  if (r.error) return { ok: false, status: 'error', detail: `${who}: ${r.error}` };
+  if (!r.httpOk) return { ok: false, status: 'error', detail: `${who}: server error (HTTP ${r.status}) ${shorten(r.body)}` };
+
+  const first = r.body.split(/\s+/)[0].toLowerCase();
+  if (GENERIC_ERROR_RE.test(first)) return { ok: false, status: 'error', detail: `${who}: ${shorten(r.body)}` };
+  const unchanged = GENERIC_NOCHG_RE.test(r.body);
+  return { ok: true, status: unchanged ? 'unchanged' : 'updated', detail: `${who}: ${shorten(r.body)}` };
+}
+
+async function updateGeneric(p, { ipv4, ipv6 }) {
+  const urls = (p.urls || []).filter((u) => (typeof u === 'string' ? u : u?.url));
+  if (!urls.length) return { ok: false, status: 'error', detail: 'no update URLs configured' };
+  const results = [];
+  for (const u of urls) results.push(await hitGenericUrl(u, ipv4, ipv6));
+
+  const errs = results.filter((r) => !r.ok);
+  const updated = results.filter((r) => r.ok && r.status === 'updated').length;
+  const name = p.label || 'Custom URL';
+  if (errs.length) {
+    return { ok: false, status: 'error', detail: `${name}: ${errs.length}/${results.length} failed — ${errs[0].detail}` };
+  }
+  const n = results.length;
+  return {
+    ok: true,
+    status: updated ? 'updated' : 'unchanged',
+    detail: `Custom URL ${name}: ${updated} updated, ${n - updated} unchanged (${n} URL${n > 1 ? 's' : ''})`,
+  };
+}
+
 // Dispatch by provider type. `p` is a normalized ddns_providers entry.
 export async function updateDdnsProvider(p, ips) {
   switch (p.type) {
@@ -186,6 +241,8 @@ export async function updateDdnsProvider(p, ips) {
       return updateDynDns2(p, ips);
     case 'freedns':
       return updateFreeDns(p, ips);
+    case 'generic':
+      return updateGeneric(p, ips);
     default:
       return { ok: false, status: 'error', detail: `unknown provider type: ${p.type}` };
   }

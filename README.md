@@ -31,7 +31,7 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - 🎯 **Per-zone update & enable/disable** — an "Update" badge syncs just one zone on demand; toggle a zone off to park it without deleting
 - 🎚️ **Per-subdomain record types** — global A/AAAA master switches, narrowed per host (e.g. one subdomain dual-stack, another IPv4-only)
 - 🛡️ **WAF / IP Lists** — keep a Cloudflare account-level IP List updated with your current IP, to reference in firewall rules
-- 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS, FreeDNS, & generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, …) behind a flag
+- 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS, FreeDNS, generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, …), or any **Custom URL** service (freemyip, dynv6, …) behind a flag
 - 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, with **per-channel** event selection (update failures, IP changes, and/or successful record changes)
 - 💓 **Heartbeat monitoring** — ping **Healthchecks.io**, **Uptime Kuma**, **Better Stack**, or a **custom URL** (`{status}`/`{message}` placeholders) after each run so you're alerted if the updater ever stops
 - 🎨 **Light / Dark / System** theme
@@ -150,9 +150,10 @@ Use **Send test** on a saved channel to confirm it works. IP-change alerts fire 
 ## Other DDNS providers (optional)
 
 This is a Cloudflare-first tool, but if you also have a one-off dynamic host on **DuckDNS**, **FreeDNS**
-(afraid.org), or a **DynDNS2**-compatible provider (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, many
-routers), you can keep it updated here too — no need for a second tool. It rides on the same schedule,
-IP detection, activity log, and notifications.
+(afraid.org), a **DynDNS2**-compatible provider (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, many
+routers), or **any service that updates via a simple GET URL** (freemyip, dynv6, Google Domains, …),
+you can keep it updated here too — no need for a second tool. It rides on the same schedule, IP
+detection, activity log, and notifications.
 
 Enable it by setting `ENABLE_OTHER_DDNS=true`; a **DDNS** tab appears. Then **Add provider**:
 
@@ -161,6 +162,7 @@ Enable it by setting `ENABLE_OTHER_DDNS=true`; a **DDNS** tab appears. Then **Ad
 | **DuckDNS** | Domain(s) (without `.duckdns.org`) + your **token** |
 | **FreeDNS** (afraid.org) | Pick a **method**: *Update token/URL* — one or more per-host update tokens/URLs (add as many as you like); or *Username & password* — hostname + credentials (DynDNS2-style) |
 | **DynDNS2** | **Server host** (e.g. `dynupdate.no-ip.com`), **hostname**, **username**, **password**, HTTPS on/off |
+| **Custom URL** | One or more full update URLs (add as many hosts as you like). Use `{ip}`, `{ip4}`, or `{ip6}` where the URL needs your address — e.g. `https://freemyip.com/update?token=…&domain=you.freemyip.com&myip={ip}` — or omit them to let the service auto-detect. Success = an HTTP 2xx whose body isn't an error (e.g. freemyip's `OK`) |
 
 > **FreeDNS single-host note:** the *username/password* method uses FreeDNS's `/nic/update` endpoint,
 > which is [known to update **all** hosts on the account](https://github.com/ddclient/ddclient/issues/180)
@@ -195,8 +197,8 @@ server's filesystem:
 
 - **Pre-1.0 (0.x):** still stabilizing — expect occasional changes until `v1.0.0`.
 - Manages **A / AAAA** records and account **IP Lists**. Load balancers are still out of scope.
-- Non-Cloudflare DDNS (**DuckDNS / FreeDNS / DynDNS2**) is **opt-in** via `ENABLE_OTHER_DDNS`, and stays
-  hidden/inactive when off — the Cloudflare path is unaffected either way.
+- Non-Cloudflare DDNS (**DuckDNS / FreeDNS / DynDNS2 / Custom URL**) is **opt-in** via `ENABLE_OTHER_DDNS`,
+  and stays hidden/inactive when off — the Cloudflare path is unaffected either way.
 - Notifications cover Discord, Slack, and generic webhook/ntfy (the webhook channel also covers
   Gotify / Home Assistant / custom endpoints). Telegram/Pushover aren't built in.
 - WAF list-item changes use Cloudflare's async bulk API — the UI reports "submitted".

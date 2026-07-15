@@ -35,11 +35,18 @@ function buildFqdn(subName, zoneName) {
 
 // Display label + host for a non-Cloudflare DDNS provider (also the record fqdn).
 function ddnsTypeLabel(type) {
-  return type === 'dyndns2' ? 'DynDNS2' : type === 'freedns' ? 'FreeDNS' : 'DuckDNS';
+  return type === 'dyndns2'
+    ? 'DynDNS2'
+    : type === 'freedns'
+    ? 'FreeDNS'
+    : type === 'generic'
+    ? 'Custom URL'
+    : 'DuckDNS';
 }
 function ddnsHost(p) {
   if (p.type === 'dyndns2') return p.hostname;
   if (p.type === 'freedns') return (p.method === 'userpass' ? p.hostname : p.label) || p.label || 'FreeDNS';
+  if (p.type === 'generic') return p.label; // no single hostname; identified by its label
   return p.domains;
 }
 

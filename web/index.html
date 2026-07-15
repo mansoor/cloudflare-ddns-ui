@@ -550,6 +550,7 @@
             <button type="button" class="btn-danger text-sm acc-delete">Delete zone</button>
             <div class="flex items-center gap-2">
               <span class="acc-save-msg text-xs"></span>
+              <button type="button" class="btn-secondary text-sm acc-cancel">Cancel</button>
               <button type="button" class="btn-primary text-sm acc-save">Save zone</button>
             </div>
           </div>
@@ -606,7 +607,10 @@
           </div>
           <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">
             <button type="button" class="btn-danger text-sm waf-delete">Delete list</button>
-            <button type="button" class="btn-primary text-sm waf-save">Save list</button>
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn-secondary text-sm waf-cancel">Cancel</button>
+              <button type="button" class="btn-primary text-sm waf-save">Save list</button>
+            </div>
           </div>
         </div>
       </div>
@@ -683,6 +687,7 @@
             <div class="flex items-center gap-2">
               <span class="ch-msg text-xs"></span>
               <button type="button" class="btn-secondary text-sm ch-test">Send test</button>
+              <button type="button" class="btn-secondary text-sm ch-cancel">Cancel</button>
               <button type="button" class="btn-primary text-sm ch-save">Save channel</button>
             </div>
           </div>
@@ -742,6 +747,7 @@
             <div class="flex items-center gap-2">
               <span class="hb-msg text-xs"></span>
               <button type="button" class="btn-secondary text-sm hb-test">Test</button>
+              <button type="button" class="btn-secondary text-sm hb-cancel">Cancel</button>
               <button type="button" class="btn-primary text-sm hb-save">Save monitor</button>
             </div>
           </div>
@@ -775,6 +781,7 @@
                 <option value="duckdns">DuckDNS</option>
                 <option value="dyndns2">DynDNS2 (No-IP, Dynu, Namecheap, DNS-O-Matic…)</option>
                 <option value="freedns">FreeDNS (afraid.org)</option>
+                <option value="generic">Custom URL (freemyip, dynv6, …)</option>
               </select>
             </div>
             <div>
@@ -806,13 +813,13 @@
             <div class="ddns-fd-userpass ddns-field hidden sm:col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
               ⚠ FreeDNS's username/password endpoint can update <b>every host on your account</b>, not just this hostname (a known FreeDNS limitation). To update a single host reliably, use the <b>Update token / URL</b> method.
             </div>
-            <!-- FreeDNS: token/URL rows -->
-            <div class="ddns-fd-tokenrows ddns-field sm:col-span-2">
+            <!-- Shared token/URL rows: FreeDNS (token method) + Custom URL -->
+            <div class="ddns-urlrows ddns-field sm:col-span-2">
               <div class="mb-1 flex items-center justify-between">
-                <label class="label mb-0">Update tokens / URLs</label>
+                <label class="label mb-0 ddns-urls-title">Update tokens / URLs</label>
                 <button type="button" class="btn-add text-xs ddns-add-url">+ Add URL</button>
               </div>
-              <p class="mb-2 text-xs text-slate-500">Each host's update token or full update URL (FreeDNS → Dynamic DNS). Shown in plain text.</p>
+              <p class="ddns-urls-hint mb-2 text-xs text-slate-500">Each host's update token or full update URL (FreeDNS → Dynamic DNS). Shown in plain text.</p>
               <div class="ddns-urls space-y-2"></div>
             </div>
 
@@ -842,6 +849,7 @@
             <button type="button" class="btn-danger text-sm ddns-delete">Delete</button>
             <div class="flex items-center gap-2">
               <button type="button" class="btn-secondary text-sm ddns-test">Test</button>
+              <button type="button" class="btn-secondary text-sm ddns-cancel">Cancel</button>
               <button type="button" class="btn-primary text-sm ddns-save">Save provider</button>
             </div>
           </div>

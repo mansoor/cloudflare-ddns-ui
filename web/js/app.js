@@ -237,9 +237,24 @@ function setCollapsed(node, collapsed) {
   $('.acc-chevron', node).classList.toggle('rotate-90', !collapsed);
 }
 
+// Deep-clone a plain config object to stash a card's last-saved snapshot.
+const cloneData = (o) => (o ? JSON.parse(JSON.stringify(o)) : {});
+
+// Cancel button behavior, shared by every card: revert an existing card to its
+// last-saved snapshot, or discard it entirely if it was never saved (no id).
+function revertCard(node, makeRow, updateEmpty) {
+  if (!node.dataset.id) {
+    node.remove();
+    if (updateEmpty) updateEmpty();
+    return;
+  }
+  node.replaceWith(makeRow(node.__saved || {}, { expanded: true }));
+}
+
 function makeAccountRow(acc = {}, { expanded = false } = {}) {
   const node = $('#account-template').content.firstElementChild.cloneNode(true);
   node.dataset.id = acc.id || '';
+  node.__saved = cloneData(acc);
   $('.acc-label', node).value = acc.label || '';
   const tokenInput = $('.acc-token', node);
   // If a token is already stored, show a placeholder hint but keep the field
@@ -278,6 +293,7 @@ function makeAccountRow(acc = {}, { expanded = false } = {}) {
   $('.acc-verify', node).addEventListener('click', () => verifyAccount(node));
   $('.acc-save', node).addEventListener('click', () => saveZone(node));
   $('.acc-delete', node).addEventListener('click', () => deleteZone(node));
+  $('.acc-cancel', node).addEventListener('click', () => revertCard(node, makeAccountRow, updateAccountsEmpty));
   $('.acc-update', node).addEventListener('click', (e) => {
     e.stopPropagation(); // don't toggle collapse
     updateZone(node);
@@ -831,6 +847,7 @@ function updateWafSummary(node) {
 function makeWafRow(w = {}, { expanded = false } = {}) {
   const node = $('#waf-template').content.firstElementChild.cloneNode(true);
   node.dataset.id = w.id || '';
+  node.__saved = cloneData(w);
   $('.waf-label', node).value = w.label || '';
   $('.waf-account', node).value = w.account_id || '';
   $('.waf-comment', node).value = w.item_comment || '';
@@ -856,6 +873,7 @@ function makeWafRow(w = {}, { expanded = false } = {}) {
   $('.waf-verify', node).addEventListener('click', () => verifyWaf(node));
   $('.waf-save', node).addEventListener('click', () => saveWaf(node));
   $('.waf-delete', node).addEventListener('click', () => deleteWaf(node));
+  $('.waf-cancel', node).addEventListener('click', () => revertCard(node, makeWafRow, updateWafEmpty));
   $('.waf-update', node).addEventListener('click', (e) => {
     e.stopPropagation();
     updateWafList(node);
@@ -1005,6 +1023,7 @@ function updateChannelSummary(node) {
 function makeChannelRow(c = {}, { expanded = false } = {}) {
   const node = $('#channel-template').content.firstElementChild.cloneNode(true);
   node.dataset.id = c.id || '';
+  node.__saved = cloneData(c);
   $('.ch-type', node).value = c.type || 'discord';
   $('.ch-label', node).value = c.label || '';
   $('.ch-enabled', node).checked = c.enabled !== false;
@@ -1037,6 +1056,7 @@ function makeChannelRow(c = {}, { expanded = false } = {}) {
   );
   $('.ch-save', node).addEventListener('click', () => saveChannel(node));
   $('.ch-delete', node).addEventListener('click', () => deleteChannel(node));
+  $('.ch-cancel', node).addEventListener('click', () => revertCard(node, makeChannelRow, updateChannelsEmpty));
   $('.ch-test', node).addEventListener('click', () => testChannel(node));
   $('.acc-header', node).addEventListener('click', () => {
     setCollapsed(node, !$('.acc-body', node).classList.contains('hidden'));
@@ -1154,6 +1174,7 @@ function toggleHeartbeatHint(node) {
 function makeHeartbeatRow(hb = {}, { expanded = false } = {}) {
   const node = $('#heartbeat-template').content.firstElementChild.cloneNode(true);
   node.dataset.id = hb.id || '';
+  node.__saved = cloneData(hb);
   $('.hb-type', node).value = hb.type || 'healthchecks';
   $('.hb-label', node).value = hb.label || '';
   $('.hb-enabled', node).checked = hb.enabled !== false;
@@ -1182,6 +1203,7 @@ function makeHeartbeatRow(hb = {}, { expanded = false } = {}) {
   $('.hb-enabled', node).addEventListener('change', () => updateHeartbeatSummary(node));
   $('.hb-save', node).addEventListener('click', () => saveHeartbeat(node));
   $('.hb-delete', node).addEventListener('click', () => deleteHeartbeat(node));
+  $('.hb-cancel', node).addEventListener('click', () => revertCard(node, makeHeartbeatRow, updateHeartbeatsEmpty));
   $('.hb-test', node).addEventListener('click', () => testHeartbeat(node));
   $('.acc-header', node).addEventListener('click', () => {
     setCollapsed(node, !$('.acc-body', node).classList.contains('hidden'));
@@ -1264,18 +1286,33 @@ function updateDdnsEmpty() {
 function toggleDdnsFields(node) {
   const type = $('.ddns-type', node).value;
   const method = $('.ddns-fd-method', node).value;
+  // The URL-rows block is shared by FreeDNS (token method) and Custom URL.
+  const showUrlRows = (type === 'freedns' && method === 'token') || type === 'generic';
   $$('.ddns-field', node).forEach((el) => {
     let show;
-    if (type === 'freedns') {
-      // FreeDNS visibility depends on the chosen method.
-      if (el.classList.contains('ddns-fd-tokenrows')) show = method === 'token';
-      else if (el.classList.contains('ddns-fd-userpass')) show = method === 'userpass';
+    if (el.classList.contains('ddns-urlrows')) {
+      show = showUrlRows;
+    } else if (type === 'freedns') {
+      if (el.classList.contains('ddns-fd-userpass')) show = method === 'userpass';
       else show = el.classList.contains('ddns-f-freedns'); // the method selector
     } else {
       show = el.classList.contains(`ddns-f-${type}`);
     }
     el.classList.toggle('hidden', !show);
   });
+  // Retitle the shared URL block for whichever type is using it.
+  const title = $('.ddns-urls-title', node);
+  const hint = $('.ddns-urls-hint', node);
+  if (type === 'generic') {
+    title.textContent = 'Update URLs';
+    const code = (t) => `<code class="rounded bg-slate-100 px-1 dark:bg-slate-700">${t}</code>`;
+    hint.innerHTML =
+      `Full update URL for each host. Use ${code('{ip}')}, ${code('{ip4}')} or ${code('{ip6}')} where the ` +
+      `URL needs your IP (omit to let the provider auto-detect). Shown in plain text.`;
+  } else {
+    title.textContent = 'Update tokens / URLs';
+    hint.textContent = "Each host's update token or full update URL (FreeDNS → Dynamic DNS). Shown in plain text.";
+  }
 }
 
 // One FreeDNS update token/URL row.
@@ -1288,7 +1325,11 @@ function makeDdnsUrlRow(node, entry = {}, { masked = false } = {}) {
   const value = url;
   input.value = value;
   $('.ddns-url-label', row).value = label;
-  $('.ddns-url-remove', row).addEventListener('click', () => row.remove());
+  $('.ddns-url-remove', row).addEventListener('click', () => {
+    row.remove();
+    updateDdnsSummary(node);
+  });
+  input.addEventListener('input', () => updateDdnsSummary(node));
 
   // Existing (already-saved) URLs load masked with an eye toggle to reveal.
   // A blank/new row has nothing to hide, so it stays plain text.
@@ -1313,6 +1354,7 @@ function updateDdnsSummary(node) {
   const hostname = $('.ddns-hostname', node).value.trim();
   const domains = $('.ddns-domains', node).value.trim();
   const label = $('.ddns-label', node).value.trim();
+  const urlCount = $$('.ddns-urls .ddns-url-row', node).filter((r) => $('.ddns-url', r).value.trim()).length;
   const host =
     type === 'dyndns2'
       ? hostname
@@ -1320,9 +1362,14 @@ function updateDdnsSummary(node) {
       ? method === 'userpass'
         ? hostname
         : label
+      : type === 'generic'
+      ? urlCount
+        ? `${urlCount} URL${urlCount > 1 ? 's' : ''}`
+        : 'no URLs'
       : domains;
   const enabled = $('.ddns-enabled', node).checked;
-  const typeName = type === 'dyndns2' ? 'DynDNS2' : type === 'freedns' ? 'FreeDNS' : 'DuckDNS';
+  const typeName =
+    type === 'dyndns2' ? 'DynDNS2' : type === 'freedns' ? 'FreeDNS' : type === 'generic' ? 'Custom URL' : 'DuckDNS';
   $('.ddns-summary-title', node).textContent = label || host || 'New provider';
   $('.ddns-summary-meta', node).textContent = `${typeName} · ${host || 'not configured'}`;
   const badge = $('.ddns-summary-badge', node);
@@ -1337,6 +1384,7 @@ function updateDdnsSummary(node) {
 function makeDdnsRow(p = {}, { expanded = false } = {}) {
   const node = $('#ddns-template').content.firstElementChild.cloneNode(true);
   node.dataset.id = p.id || '';
+  node.__saved = cloneData(p);
   $('.ddns-type', node).value = p.type || 'duckdns';
   $('.ddns-label', node).value = p.label || '';
   $('.ddns-enabled', node).checked = p.enabled !== false;
@@ -1380,6 +1428,7 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
   $('.ddns-enabled', node).addEventListener('change', () => updateDdnsSummary(node));
   $('.ddns-save', node).addEventListener('click', () => saveDdns(node));
   $('.ddns-delete', node).addEventListener('click', () => deleteDdns(node));
+  $('.ddns-cancel', node).addEventListener('click', () => revertCard(node, makeDdnsRow, updateDdnsEmpty));
   $('.ddns-test', node).addEventListener('click', () => testDdns(node));
   $('.ddns-update', node).addEventListener('click', (e) => {
     e.stopPropagation();
@@ -1439,6 +1488,9 @@ function ddnsMissingField(node) {
       const urls = $$('.ddns-urls .ddns-url', node).map((i) => i.value.trim()).filter(Boolean);
       if (!urls.length) return 'Add at least one FreeDNS update token or URL.';
     }
+  } else if (type === 'generic') {
+    const urls = $$('.ddns-urls .ddns-url', node).map((i) => i.value.trim()).filter(Boolean);
+    if (!urls.length) return 'Add at least one update URL.';
   } else {
     if (!$('.ddns-server', node).value.trim()) return 'Enter the DynDNS2 server host.';
     if (!$('.ddns-hostname', node).value.trim()) return 'Enter the hostname.';
