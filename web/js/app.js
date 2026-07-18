@@ -110,6 +110,9 @@ function applyFeatures() {
   const on = Boolean(META.features && META.features.ddns);
   const btn = $('#tab-btn-ddns');
   if (btn) btn.classList.toggle('hidden', !on);
+  // The DDNS force-update default only means anything with the feature on.
+  const forceField = $('#ddns-force-default-field');
+  if (forceField) forceField.classList.toggle('hidden', !on);
 }
 
 const PROVIDER_LABELS = {
@@ -376,6 +379,12 @@ function renderConfig(cfg) {
   $('#opt-purge').checked = cfg.purge_unknown_records;
   $('#opt-reject-cf').checked = cfg.reject_cloudflare_ips !== false;
   $('#opt-record-comment').value = cfg.record_comment ?? 'cf-ddns-plus';
+  // Master DDNS force-update default (mirrored into each provider card's label).
+  $('#ddns-force-every').value = cfg.ddns_force_every ?? 30;
+  $('#ddns-force-unit').value = ['minutes', 'hours', 'days'].includes(cfg.ddns_force_unit)
+    ? cfg.ddns_force_unit
+    : 'days';
+  refreshDdnsForceDefaultSummary();
 
   fillProviderSelect($('#ip4-provider'), META.ip4_providers, cfg.ip4_provider);
   fillProviderSelect($('#ip6-provider'), META.ip6_providers, cfg.ip6_provider);
@@ -715,6 +724,8 @@ function collectConfig() {
     notifications: collectNotifications(),
     heartbeats: collectHeartbeats(),
     ddns_providers: collectDdns(),
+    ddns_force_every: Number($('#ddns-force-every').value) || 30,
+    ddns_force_unit: $('#ddns-force-unit').value,
     log: {
       persistent: $('#log-persistent').checked,
       memory_rows: Number($('#log-memory-rows').value) || 200,
@@ -1315,9 +1326,33 @@ function toggleDdnsFields(node) {
   }
 }
 
-// Grey out the interval inputs when force update is off.
+// Force update off → hide everything. On → show the "Default" checkbox, and show
+// the custom interval row only when the user opts out of the default.
 function toggleDdnsForce(node) {
-  $('.ddns-force-fields', node).classList.toggle('hidden', !$('.ddns-force', node).checked);
+  const on = $('.ddns-force', node).checked;
+  const useDefault = $('.ddns-force-default', node).checked;
+  $('.ddns-force-fields', node).classList.toggle('hidden', !on);
+  $('.ddns-force-custom', node).classList.toggle('hidden', !on || useDefault);
+}
+
+// The master default lives in Settings → Schedule & advanced; mirror it into
+// every card's "Default: Re-send every N unit" label.
+function ddnsForceDefaultText() {
+  const every = $('#ddns-force-every');
+  const unit = $('#ddns-force-unit');
+  return `Re-send every ${(every && Number(every.value)) || 30} ${(unit && unit.value) || 'days'}`;
+}
+
+// Scoped to a card — makeDdnsRow builds the node before it's in the document, so
+// a document-wide query wouldn't reach it.
+function setDdnsForceDefaultSummary(node) {
+  const el = $('.ddns-force-default-summary', node);
+  if (el) el.textContent = ddnsForceDefaultText();
+}
+
+function refreshDdnsForceDefaultSummary() {
+  const text = ddnsForceDefaultText();
+  $$('.ddns-force-default-summary').forEach((el) => (el.textContent = text));
 }
 
 // Stepper arrows for the force-update interval (mobile browsers show no native
@@ -1409,6 +1444,7 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
   $('.ddns-https', node).checked = p.https !== false;
   $('.ddns-fd-method', node).value = p.method === 'userpass' ? 'userpass' : 'token';
   $('.ddns-force', node).checked = p.force_update !== false; // default on
+  $('.ddns-force-default', node).checked = p.force_default !== false; // follow master
   $('.ddns-force-every', node).value = p.force_every ?? 30;
   $('.ddns-force-unit', node).value = ['minutes', 'hours', 'days'].includes(p.force_unit)
     ? p.force_unit
@@ -1441,7 +1477,12 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
   $('.ddns-add-url', node).addEventListener('click', () =>
     $('.ddns-urls', node).appendChild(makeDdnsUrlRow(node))
   );
-  $('.ddns-force', node).addEventListener('change', () => toggleDdnsForce(node));
+  $('.ddns-force', node).addEventListener('change', (e) => {
+    // Turning force update on starts from the master default.
+    if (e.target.checked) $('.ddns-force-default', node).checked = true;
+    toggleDdnsForce(node);
+  });
+  $('.ddns-force-default', node).addEventListener('change', () => toggleDdnsForce(node));
   $('.ddns-step-up', node).addEventListener('click', () => stepDdnsForce(node, 1));
   $('.ddns-step-down', node).addEventListener('click', () => stepDdnsForce(node, -1));
   ['.ddns-label', '.ddns-domains', '.ddns-hostname'].forEach((sel) =>
@@ -1462,6 +1503,7 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
 
   toggleDdnsFields(node);
   toggleDdnsForce(node);
+  setDdnsForceDefaultSummary(node);
   setCollapsed(node, !expanded);
   updateDdnsSummary(node);
   return node;
@@ -1486,6 +1528,7 @@ function collectOneDdns(node) {
       }))
       .filter((e) => e.url),
     force_update: $('.ddns-force', node).checked,
+    force_default: $('.ddns-force-default', node).checked,
     force_every: Number($('.ddns-force-every', node).value) || 30,
     force_unit: $('.ddns-force-unit', node).value,
     server: $('.ddns-server', node).value.trim(),
@@ -2024,6 +2067,19 @@ async function init() {
   $('#opt-a').addEventListener('change', () => applySubFamilyState());
   $('#opt-aaaa').addEventListener('change', () => applySubFamilyState());
   $('#log-persistent').addEventListener('change', toggleLogFields);
+  // Master DDNS force-update default: stepper arrows + live label in each card.
+  $('#ddns-force-up').addEventListener('click', () => {
+    const el = $('#ddns-force-every');
+    el.value = String(Math.min(100000, (Number(el.value) || 1) + 1));
+    refreshDdnsForceDefaultSummary();
+  });
+  $('#ddns-force-down').addEventListener('click', () => {
+    const el = $('#ddns-force-every');
+    el.value = String(Math.max(1, (Number(el.value) || 1) - 1));
+    refreshDdnsForceDefaultSummary();
+  });
+  $('#ddns-force-every').addEventListener('input', refreshDdnsForceDefaultSummary);
+  $('#ddns-force-unit').addEventListener('change', refreshDdnsForceDefaultSummary);
   // Onboarding / import-from-cloudflare-ddns
   $('#onboarding-to-zones').addEventListener('click', () => $('[data-tab="zones"]').click());
   $('#import-preview-btn').addEventListener('click', previewImport);

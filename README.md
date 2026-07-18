@@ -183,10 +183,14 @@ A provider is only contacted when something changed — your **IP**, or that pro
 updates are wasteful and some services (No-IP) explicitly ask clients not to send them; Custom URL
 endpoints can't even tell you it was a no-op, since they reply `OK` either way.
 
-Each provider also has a **Force update** option (on by default, every **30 days**) that re-sends on a
-schedule regardless — set it in minutes, hours, or days. That keeps free hosts from expiring through
-inactivity and re-asserts the record if it was changed at the provider. Shorten it if your provider
-expires hosts sooner. The **Test** button always sends, whatever these settings say.
+Each provider also has a **Force update** option (on by default) that re-sends on a schedule regardless.
+That keeps free hosts from expiring through inactivity and re-asserts the record if it was changed at the
+provider.
+
+The interval comes from the **Default force-update interval** in *Settings → Schedule & advanced*
+(**30 days** out of the box, settable in minutes / hours / days). Each provider follows that default
+unless you untick **Default** on its card, which reveals a per-provider interval instead. Shorten it if
+your provider expires hosts sooner. The **Test** button always sends, whatever these settings say.
 
 ## Backup & restore
 
