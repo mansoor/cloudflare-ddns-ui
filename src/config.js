@@ -41,6 +41,10 @@ export function defaultConfig() {
     },
     heartbeats: [], // uptime monitors pinged after each full run
     ddns_providers: [],
+    // Master default for the DDNS force-update interval. Providers left on
+    // "Default" follow these; others carry their own force_every/force_unit.
+    ddns_force_every: 30,
+    ddns_force_unit: 'days',
     log: {
       persistent: false, // default: in-memory only
       memory_rows: 200, // rows kept in memory (in-memory mode)
@@ -110,8 +114,11 @@ export function normalizeConfig(input) {
   cfg.waf_lists = Array.isArray(cfg.waf_lists) ? cfg.waf_lists.map(normalizeWaf) : [];
   cfg.notifications = normalizeNotifications(cfg.notifications);
   cfg.heartbeats = Array.isArray(cfg.heartbeats) ? cfg.heartbeats.map(normalizeHeartbeat) : [];
+  cfg.ddns_force_every = clampInt(cfg.ddns_force_every, 1, 100000, 30);
+  cfg.ddns_force_unit = DDNS_FORCE_UNITS.includes(cfg.ddns_force_unit) ? cfg.ddns_force_unit : 'days';
+  const forceMaster = { every: cfg.ddns_force_every, unit: cfg.ddns_force_unit };
   cfg.ddns_providers = Array.isArray(cfg.ddns_providers)
-    ? cfg.ddns_providers.map(normalizeDdnsProvider)
+    ? cfg.ddns_providers.map((p) => normalizeDdnsProvider(p, forceMaster))
     : [];
   cfg.log = normalizeLog(cfg.log);
   return cfg;
@@ -137,7 +144,16 @@ export function sanitizeLogFileName(name) {
   return cleaned || 'activity.log';
 }
 
-function normalizeDdnsProvider(p) {
+function normalizeDdnsProvider(p, forceMaster = { every: 30, unit: 'days' }) {
+  // Force-update interval: providers on "Default" follow the master setting.
+  // For configs written before the master existed, infer force_default — a
+  // provider that carried its own interval differing from the master keeps it.
+  const forceEvery = clampInt(p?.force_every, 1, 100000, forceMaster.every);
+  const forceUnit = DDNS_FORCE_UNITS.includes(p?.force_unit) ? p.force_unit : forceMaster.unit;
+  const forceDefault =
+    p?.force_default != null
+      ? p.force_default !== false
+      : forceEvery === forceMaster.every && forceUnit === forceMaster.unit;
   // FreeDNS token/URL list — migrate an older single `token` into the list.
   const rawUrls = Array.isArray(p?.urls)
     ? p.urls
@@ -166,8 +182,9 @@ function normalizeDdnsProvider(p) {
     // expiring and re-asserts the record if it was changed at the provider.
     // On by default so skipping unchanged updates never silently lets a host lapse.
     force_update: p?.force_update !== false,
-    force_every: clampInt(p?.force_every, 1, 100000, 30),
-    force_unit: DDNS_FORCE_UNITS.includes(p?.force_unit) ? p.force_unit : 'days',
+    force_default: forceDefault, // follow the master interval
+    force_every: forceEvery, // used only when force_default is false
+    force_unit: forceUnit,
   };
 }
 

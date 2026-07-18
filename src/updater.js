@@ -68,8 +68,12 @@ function ddnsSignature(p) {
 }
 
 const FORCE_UNIT_MS = { minutes: 60_000, hours: 3_600_000, days: 86_400_000 };
-function forceIntervalMs(p) {
-  return Math.max(1, Number(p.force_every) || 1) * (FORCE_UNIT_MS[p.force_unit] || FORCE_UNIT_MS.days);
+// Providers left on "Default" follow the master interval from Settings.
+function forceIntervalMs(p, cfg) {
+  const custom = p.force_default === false;
+  const every = custom ? p.force_every : cfg?.ddns_force_every;
+  const unit = custom ? p.force_unit : cfg?.ddns_force_unit;
+  return Math.max(1, Number(every) || 1) * (FORCE_UNIT_MS[unit] || FORCE_UNIT_MS.days);
 }
 
 function ddnsHost(p) {
@@ -442,7 +446,7 @@ export async function runUpdate(
       const sent = await getDdnsSent(p.id);
       const same = sent && sent.v4 === targetIPs.ipv4 && sent.v6 === targetIPs.ipv6 && sent.sig === sig;
       const forceDue =
-        p.force_update && (!sent?.at || Date.now() - new Date(sent.at).getTime() >= forceIntervalMs(p));
+        p.force_update && (!sent?.at || Date.now() - new Date(sent.at).getTime() >= forceIntervalMs(p, cfg));
       if (haveIP && same && !forceDue) {
         records.push({
           fqdn: host || p.label || typeLabel,
