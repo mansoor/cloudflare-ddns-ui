@@ -843,6 +843,25 @@
             <label class="ddns-f-dyndns2 ddns-fd-userpass ddns-field hidden sm:col-span-2 flex items-center gap-2 text-sm">
               <input type="checkbox" class="ddns-https h-4 w-4 rounded border-slate-300" /> Use HTTPS
             </label>
+            <!-- Force update (applies to every provider type) -->
+            <div class="sm:col-span-2 border-t border-slate-200 pt-3 dark:border-slate-700">
+              <label class="flex items-start gap-2 text-sm">
+                <input type="checkbox" class="ddns-force mt-0.5 h-4 w-4 rounded border-slate-300" />
+                <span>
+                  <b>Force update</b>
+                  <span class="block text-xs text-slate-500">Updates are normally sent only when your IP (or this provider's settings) changes. Turn this on to re-send on a schedule anyway — keeps free hosts from expiring and re-asserts the record.</span>
+                </span>
+              </label>
+              <div class="ddns-force-fields mt-2 flex flex-wrap items-center gap-2 pl-6">
+                <span class="text-xs text-slate-500">Re-send every</span>
+                <input class="input ddns-force-every w-24" type="number" min="1" max="100000" />
+                <select class="input ddns-force-unit w-32">
+                  <option value="minutes">minutes</option>
+                  <option value="hours">hours</option>
+                  <option value="days">days</option>
+                </select>
+              </div>
+            </div>
             <p class="ddns-verify-msg sm:col-span-2 text-xs"></p>
           </div>
           <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">

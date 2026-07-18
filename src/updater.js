@@ -12,6 +12,7 @@ import { DDNS_ENABLED } from './features.js';
 import { isCloudflareIP } from './cfips.js';
 import { sendHeartbeats } from './heartbeat.js';
 import { domainToASCII } from 'node:url';
+import { createHash } from 'node:crypto';
 
 // Convert an internationalized (Unicode) domain to ASCII/punycode for the API.
 // A no-op for plain ASCII; preserves a leading "*." wildcard label.
@@ -43,6 +44,34 @@ function ddnsTypeLabel(type) {
     ? 'Custom URL'
     : 'DuckDNS';
 }
+// Fingerprint of everything that decides what we'd send to a provider, so an
+// edited hostname / URL / credential re-sends even when the IP is unchanged.
+// Hashed, so no secret is written to runtime.json.
+function ddnsSignature(p) {
+  return createHash('sha256')
+    .update(
+      JSON.stringify([
+        p.type,
+        p.domains || '',
+        p.hostname || '',
+        p.server || '',
+        p.username || '',
+        p.method || '',
+        p.https !== false,
+        p.token || '',
+        p.password || '',
+        (p.urls || []).map((u) => (typeof u === 'string' ? u : u?.url || '')),
+      ])
+    )
+    .digest('hex')
+    .slice(0, 16);
+}
+
+const FORCE_UNIT_MS = { minutes: 60_000, hours: 3_600_000, days: 86_400_000 };
+function forceIntervalMs(p) {
+  return Math.max(1, Number(p.force_every) || 1) * (FORCE_UNIT_MS[p.force_unit] || FORCE_UNIT_MS.days);
+}
+
 function ddnsHost(p) {
   if (p.type === 'dyndns2') return p.hostname;
   if (p.type === 'freedns') return (p.method === 'userpass' ? p.hostname : p.label) || p.label || 'FreeDNS';
@@ -401,29 +430,29 @@ export async function runUpdate(
       const host = ddnsHost(p);
       const targetIPs = { ipv4: cfg.a ? ipv4 : null, ipv6: cfg.aaaa ? ipv6 : null };
 
-      // Custom URL services usually reply "OK" whether or not anything changed
-      // (and often ask you not to update when your IP is the same). Track the
-      // last IPs we sent per provider so we can report "unchanged" and skip the
-      // needless request. Only when we actually have an IP to compare — if none
-      // is detected, keep sending so an auto-detecting endpoint still works.
+      // Only contact a provider when something actually changed — the IP, or the
+      // provider's own settings. Redundant updates are wasteful and some services
+      // (No-IP) explicitly ask clients not to send them; Custom URL endpoints
+      // can't even tell us it was a no-op (they reply "OK" regardless). The
+      // per-provider "force update" interval re-sends anyway on a schedule, so
+      // free hosts don't expire and the record gets re-asserted. When no IP is
+      // detected we always send, so an auto-detecting endpoint still works.
       const haveIP = Boolean(targetIPs.ipv4 || targetIPs.ipv6);
-      const genericSig =
-        p.type === 'generic'
-          ? (p.urls || []).map((u) => (typeof u === 'string' ? u : u?.url || '')).join('|')
-          : null;
-      if (p.type === 'generic' && haveIP) {
-        const sent = await getDdnsSent(p.id);
-        if (sent && sent.v4 === targetIPs.ipv4 && sent.v6 === targetIPs.ipv6 && sent.sig === genericSig) {
-          records.push({
-            fqdn: host || p.label || typeLabel,
-            type: typeLabel,
-            status: 'unchanged',
-            detail: `Custom URL ${p.label || 'endpoint'}: no IP change since last update`,
-            at: new Date().toISOString(),
-          });
-          state.log('info', `${typeLabel} ${host || p.label || ''}: unchanged (no IP change)`, { status: 'unchanged' });
-          continue;
-        }
+      const sig = ddnsSignature(p);
+      const sent = await getDdnsSent(p.id);
+      const same = sent && sent.v4 === targetIPs.ipv4 && sent.v6 === targetIPs.ipv6 && sent.sig === sig;
+      const forceDue =
+        p.force_update && (!sent?.at || Date.now() - new Date(sent.at).getTime() >= forceIntervalMs(p));
+      if (haveIP && same && !forceDue) {
+        records.push({
+          fqdn: host || p.label || typeLabel,
+          type: typeLabel,
+          status: 'unchanged',
+          detail: `${typeLabel}${p.label ? ` ${p.label}` : ''}: no change since last update`,
+          at: new Date().toISOString(),
+        });
+        state.log('info', `${typeLabel} ${host || p.label || ''}: unchanged — skipped`, { status: 'unchanged' });
+        continue;
       }
 
       try {
@@ -436,8 +465,13 @@ export async function runUpdate(
           at: new Date().toISOString(),
         });
         if (r.ok) {
-          if (p.type === 'generic' && haveIP) {
-            await setDdnsSent(p.id, { v4: targetIPs.ipv4, v6: targetIPs.ipv6, sig: genericSig });
+          if (haveIP) {
+            await setDdnsSent(p.id, {
+              v4: targetIPs.ipv4,
+              v6: targetIPs.ipv6,
+              sig,
+              at: new Date().toISOString(),
+            });
           }
           state.log(r.status === 'unchanged' ? 'info' : 'success', r.detail, { status: r.status });
         } else {

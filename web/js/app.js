@@ -1315,6 +1315,11 @@ function toggleDdnsFields(node) {
   }
 }
 
+// Grey out the interval inputs when force update is off.
+function toggleDdnsForce(node) {
+  $('.ddns-force-fields', node).classList.toggle('hidden', !$('.ddns-force', node).checked);
+}
+
 // One FreeDNS update token/URL row.
 function makeDdnsUrlRow(node, entry = {}, { masked = false } = {}) {
   // Accept a string (legacy) or a { label, url } object.
@@ -1394,6 +1399,11 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
   $('.ddns-username', node).value = p.username || '';
   $('.ddns-https', node).checked = p.https !== false;
   $('.ddns-fd-method', node).value = p.method === 'userpass' ? 'userpass' : 'token';
+  $('.ddns-force', node).checked = p.force_update !== false; // default on
+  $('.ddns-force-every', node).value = p.force_every ?? 30;
+  $('.ddns-force-unit', node).value = ['minutes', 'hours', 'days'].includes(p.force_unit)
+    ? p.force_unit
+    : 'days';
 
   // FreeDNS update-URL rows (start with one empty row).
   const urlsWrap = $('.ddns-urls', node);
@@ -1422,6 +1432,7 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
   $('.ddns-add-url', node).addEventListener('click', () =>
     $('.ddns-urls', node).appendChild(makeDdnsUrlRow(node))
   );
+  $('.ddns-force', node).addEventListener('change', () => toggleDdnsForce(node));
   ['.ddns-label', '.ddns-domains', '.ddns-hostname'].forEach((sel) =>
     $(sel, node).addEventListener('input', () => updateDdnsSummary(node))
   );
@@ -1439,6 +1450,7 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
   });
 
   toggleDdnsFields(node);
+  toggleDdnsForce(node);
   setCollapsed(node, !expanded);
   updateDdnsSummary(node);
   return node;
@@ -1462,6 +1474,9 @@ function collectOneDdns(node) {
         url: $('.ddns-url', row).value.trim(),
       }))
       .filter((e) => e.url),
+    force_update: $('.ddns-force', node).checked,
+    force_every: Number($('.ddns-force-every', node).value) || 30,
+    force_unit: $('.ddns-force-unit', node).value,
     server: $('.ddns-server', node).value.trim(),
     hostname: $('.ddns-hostname', node).value.trim(),
     username: $('.ddns-username', node).value.trim(),

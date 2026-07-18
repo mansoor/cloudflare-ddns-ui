@@ -176,6 +176,18 @@ Enable it by setting `ENABLE_OTHER_DDNS=true`; a **DDNS** tab appears. Then **Ad
 **Test** does a live update and shows the provider's response. When off, the tab is hidden and these
 providers are never contacted — your Cloudflare setup is completely unaffected either way.
 
+### When updates are actually sent
+
+A provider is only contacted when something changed — your **IP**, or that provider's own **settings**
+(hostname, URL, credentials). Otherwise the run reports `unchanged` and skips the request. Redundant
+updates are wasteful and some services (No-IP) explicitly ask clients not to send them; Custom URL
+endpoints can't even tell you it was a no-op, since they reply `OK` either way.
+
+Each provider also has a **Force update** option (on by default, every **30 days**) that re-sends on a
+schedule regardless — set it in minutes, hours, or days. That keeps free hosts from expiring through
+inactivity and re-asserts the record if it was changed at the provider. Shorten it if your provider
+expires hosts sooner. The **Test** button always sends, whatever these settings say.
+
 ## Backup & restore
 
 **Settings → Backup & restore** lets you move a configuration between instances without touching the

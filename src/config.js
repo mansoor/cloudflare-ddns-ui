@@ -50,6 +50,7 @@ export function defaultConfig() {
   };
 }
 
+export const DDNS_FORCE_UNITS = ['minutes', 'hours', 'days'];
 export const CHANNEL_TYPES = ['discord', 'slack', 'webhook'];
 export const WEBHOOK_FORMATS = ['json', 'text'];
 const DEFAULT_ITEM_COMMENT = 'cf-ddns-ui';
@@ -161,6 +162,12 @@ function normalizeDdnsProvider(p) {
     username: String(p?.username || ''),
     password: String(p?.password || ''),
     https: p?.https !== false, // default true
+    // Re-send on a schedule even when nothing changed — keeps free hosts from
+    // expiring and re-asserts the record if it was changed at the provider.
+    // On by default so skipping unchanged updates never silently lets a host lapse.
+    force_update: p?.force_update !== false,
+    force_every: clampInt(p?.force_every, 1, 100000, 30),
+    force_unit: DDNS_FORCE_UNITS.includes(p?.force_unit) ? p.force_unit : 'days',
   };
 }
 

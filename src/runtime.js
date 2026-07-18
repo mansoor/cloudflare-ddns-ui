@@ -38,18 +38,24 @@ export async function setLastIPs({ v4, v6 }) {
   await writeRuntime(d);
 }
 
-// Last IPs (and a signature of the URL list) successfully sent to a Custom URL
-// provider. `null` when we've never sent to it. The signature lets an edited URL
-// list re-send even if the IP hasn't changed.
+// What we last successfully sent to a DDNS provider: the IPs, a fingerprint of
+// the provider's settings (so an edited hostname/URL/credential re-sends), and
+// when — which drives the per-provider "force update" interval. `null` when we
+// have never sent to it.
 export async function getDdnsSent(id) {
   const d = await readRuntime();
   const e = d.ddnsSent && d.ddnsSent[id];
-  return e ? { v4: e.v4 ?? null, v6: e.v6 ?? null, sig: e.sig ?? '' } : null;
+  return e ? { v4: e.v4 ?? null, v6: e.v6 ?? null, sig: e.sig ?? '', at: e.at ?? null } : null;
 }
 
-export async function setDdnsSent(id, { v4, v6, sig }) {
+export async function setDdnsSent(id, { v4, v6, sig, at }) {
   const d = await readRuntime();
   d.ddnsSent = d.ddnsSent || {};
-  d.ddnsSent[id] = { v4: v4 ?? null, v6: v6 ?? null, sig: sig ?? '' };
+  d.ddnsSent[id] = {
+    v4: v4 ?? null,
+    v6: v6 ?? null,
+    sig: sig ?? '',
+    at: at ?? new Date().toISOString(),
+  };
   await writeRuntime(d);
 }
