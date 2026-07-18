@@ -1320,6 +1320,15 @@ function toggleDdnsForce(node) {
   $('.ddns-force-fields', node).classList.toggle('hidden', !$('.ddns-force', node).checked);
 }
 
+// Stepper arrows for the force-update interval (mobile browsers show no native
+// number spinners, so we drive the value ourselves).
+function stepDdnsForce(node, delta) {
+  const input = $('.ddns-force-every', node);
+  const min = Number(input.min) || 1;
+  const max = Number(input.max) || 100000;
+  input.value = String(Math.min(max, Math.max(min, (Number(input.value) || min) + delta)));
+}
+
 // One FreeDNS update token/URL row.
 function makeDdnsUrlRow(node, entry = {}, { masked = false } = {}) {
   // Accept a string (legacy) or a { label, url } object.
@@ -1433,6 +1442,8 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
     $('.ddns-urls', node).appendChild(makeDdnsUrlRow(node))
   );
   $('.ddns-force', node).addEventListener('change', () => toggleDdnsForce(node));
+  $('.ddns-step-up', node).addEventListener('click', () => stepDdnsForce(node, 1));
+  $('.ddns-step-down', node).addEventListener('click', () => stepDdnsForce(node, -1));
   ['.ddns-label', '.ddns-domains', '.ddns-hostname'].forEach((sel) =>
     $(sel, node).addEventListener('input', () => updateDdnsSummary(node))
   );
