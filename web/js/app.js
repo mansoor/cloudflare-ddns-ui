@@ -1954,8 +1954,10 @@ function applyTheme(pref) {
   try {
     localStorage.setItem('theme', pref);
   } catch (e) {}
+  // 'paper' is an explicit choice, so it never follows the system setting.
   const dark = pref === 'dark' || (pref === 'system' && prefersDark.matches);
   document.documentElement.classList.toggle('dark', dark);
+  document.documentElement.classList.toggle('paper', pref === 'paper');
   // Collapsed control: show only the active theme's icon.
   $$('#theme-current [data-theme-icon]').forEach((el) =>
     el.classList.toggle('hidden', el.dataset.themeIcon !== pref)

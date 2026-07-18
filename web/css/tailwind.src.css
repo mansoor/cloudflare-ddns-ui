@@ -71,6 +71,168 @@
   }
 }
 
+/* ============================ Paper theme ============================
+   A third theme alongside light/dark: warm parchment surfaces with wine
+   accents (primary/Save buttons, links, focus rings) instead of orange.
+   `html.paper` is mutually exclusive with `html.dark`, so these override the
+   light-mode utilities. `html.paper .x` (0,2,1) outranks Tailwind's `.x`
+   (0,1,0), so the utilities the markup uses inline are re-pointed here, and
+   the component classes (.card/.input/.btn-*) are re-declared below. */
+html.paper {
+  --pp-bg: #eee5d5; /* page */
+  --pp-surface: #fbf7ee; /* cards, header, menus, inputs */
+  --pp-surface-alt: #f3ebdb; /* hover / subtle fills */
+  --pp-border: #ddceb4;
+  --pp-border-strong: #cbb897;
+  --pp-ink: #3b302a;
+  --pp-ink-soft: #5d4f45;
+  --pp-muted: #8a7663;
+  --pp-faint: #a99680;
+  --pp-wine: #7b2d3b;
+  --pp-wine-hover: #61212c;
+  --pp-wine-soft: #f0dfe2;
+  --pp-add: #4a6480; /* "+ Add" stays distinct from the wine Save */
+  --pp-add-hover: #3a5068;
+  background-color: var(--pp-bg);
+}
+
+/* Surfaces */
+html.paper .bg-white {
+  background-color: var(--pp-surface);
+}
+html.paper .bg-slate-100 {
+  background-color: var(--pp-surface-alt);
+}
+html.paper .bg-slate-50,
+html.paper .hover\:bg-slate-50:hover {
+  background-color: var(--pp-surface-alt);
+}
+html.paper .hover\:bg-slate-100:hover {
+  background-color: var(--pp-border);
+}
+html.paper .bg-amber-50 {
+  background-color: #f6e7c8;
+}
+
+/* Text */
+html.paper .text-slate-900 {
+  color: var(--pp-ink);
+}
+html.paper .text-slate-700,
+html.paper .text-slate-600 {
+  color: var(--pp-ink-soft);
+}
+html.paper .text-slate-500 {
+  color: var(--pp-muted);
+}
+html.paper .text-slate-400,
+html.paper .text-slate-300 {
+  color: var(--pp-faint);
+}
+
+/* Borders */
+html.paper .border-slate-100,
+html.paper .border-slate-200 {
+  border-color: var(--pp-border);
+}
+html.paper .border-slate-300 {
+  border-color: var(--pp-border-strong);
+}
+html.paper .divide-slate-100 > * + *,
+html.paper .divide-slate-200 > * + * {
+  border-color: var(--pp-border);
+}
+
+/* Brand (orange) -> wine */
+html.paper .bg-brand-500 {
+  background-color: var(--pp-wine);
+}
+html.paper .hover\:bg-brand-600:hover {
+  background-color: var(--pp-wine-hover);
+}
+html.paper .bg-brand-100 {
+  background-color: var(--pp-wine-soft);
+}
+html.paper .text-brand-600,
+html.paper .text-brand-700,
+html.paper .hover\:text-brand-600:hover {
+  color: var(--pp-wine);
+}
+html.paper .border-brand-500 {
+  border-color: var(--pp-wine);
+}
+html.paper .focus\:border-brand-500:focus {
+  border-color: var(--pp-wine);
+}
+html.paper .focus\:ring-brand-500:focus,
+html.paper .focus\:ring-brand-500\/50:focus {
+  --tw-ring-color: var(--pp-wine);
+}
+
+/* Components */
+html.paper .card {
+  background-color: var(--pp-surface);
+  border-color: var(--pp-border);
+}
+html.paper .input,
+html.paper .stepper {
+  background-color: var(--pp-surface);
+  border-color: var(--pp-border-strong);
+  color: var(--pp-ink);
+}
+html.paper .input::placeholder {
+  color: var(--pp-faint);
+}
+html.paper .input:focus,
+html.paper .stepper:focus-within {
+  border-color: var(--pp-wine);
+  --tw-ring-color: var(--pp-wine);
+}
+html.paper .stepper-input {
+  color: var(--pp-ink);
+}
+html.paper .stepper-btn:hover {
+  background-color: var(--pp-surface-alt);
+}
+html.paper .btn-primary {
+  background-color: var(--pp-wine);
+  color: #fff;
+}
+html.paper .btn-primary:hover {
+  background-color: var(--pp-wine-hover);
+}
+html.paper .btn-secondary {
+  background-color: var(--pp-surface);
+  border-color: var(--pp-border-strong);
+  color: var(--pp-ink-soft);
+}
+html.paper .btn-secondary:hover {
+  background-color: var(--pp-surface-alt);
+}
+html.paper .btn-ghost {
+  color: var(--pp-muted);
+}
+html.paper .btn-ghost:hover {
+  background-color: var(--pp-surface-alt);
+}
+html.paper .btn-add {
+  background-color: var(--pp-add);
+}
+html.paper .btn-add:hover {
+  background-color: var(--pp-add-hover);
+}
+html.paper input[type='checkbox'],
+html.paper input[type='radio'] {
+  accent-color: var(--pp-wine);
+}
+
+/* Mobile nav drawer surface (utility only applies below sm:) */
+@media (max-width: 639.98px) {
+  html.paper .max-sm\:bg-white {
+    background-color: var(--pp-surface);
+  }
+}
+
 /* The stepper draws its own arrows — hide the browser's native spinners. */
 .stepper-input::-webkit-outer-spin-button,
 .stepper-input::-webkit-inner-spin-button {

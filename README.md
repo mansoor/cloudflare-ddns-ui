@@ -34,7 +34,7 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS, FreeDNS, generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, …), or any **Custom URL** service (freemyip, dynv6, …) behind a flag
 - 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, with **per-channel** event selection (update failures, IP changes, and/or successful record changes)
 - 💓 **Heartbeat monitoring** — ping **Healthchecks.io**, **Uptime Kuma**, **Better Stack**, or a **custom URL** (`{status}`/`{message}` placeholders) after each run so you're alerted if the updater ever stops
-- 🎨 **Light / Dark / System** theme
+- 🎨 **Light / Dark / Paper / System** theme — *Paper* is a warm parchment look with wine-coloured buttons
 - ✅ **Idempotent** — only touches records that actually changed
 - 🛟 **Safe by default** — refuses to write a **Cloudflare-owned IP** into a record (guards against a mis-detected IP), and **tags the records it manages** so "purge" only ever removes its own — never records you created elsewhere
 - 🔎 **Live dashboard** — current IPs, per-record status, collapsible per-update activity log
