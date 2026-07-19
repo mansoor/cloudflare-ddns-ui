@@ -388,6 +388,10 @@ function renderConfig(cfg) {
 
   fillProviderSelect($('#ip4-provider'), META.ip4_providers, cfg.ip4_provider);
   fillProviderSelect($('#ip6-provider'), META.ip6_providers, cfg.ip6_provider);
+  // Show which detection provider each dashboard IP card is using.
+  const providerLabel = (p) => `Provider: ${PROVIDER_LABELS[p] || p || 'Off'}`;
+  $('#stat-ipv4-provider').textContent = providerLabel(cfg.ip4_provider);
+  $('#stat-ipv6-provider').textContent = providerLabel(cfg.ip6_provider);
   $('#ip4-custom').value = cfg.ip4_custom_url || '';
   $('#ip6-custom').value = cfg.ip6_custom_url || '';
   fillIfaceSelect($('#ip4-iface'), 4, cfg.ip4_iface || '');
