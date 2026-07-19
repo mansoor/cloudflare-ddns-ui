@@ -256,6 +256,12 @@ export default async function apiRoutes(app) {
       ipv4: st.currentIPv4 || null,
       ipv6: st.currentIPv6 || null,
     });
+    // A successful Test is what makes a saved provider eligible for scheduled
+    // runs. Persist that here so it survives without needing another save.
+    if (res.ok && stored && !stored.tested) {
+      stored.tested = true;
+      await saveConfig(cfg);
+    }
     return res.ok ? { ok: true, status: res.status, detail: res.detail } : reply.code(400).send({ error: res.detail });
   });
 

@@ -434,6 +434,21 @@ export async function runUpdate(
       const host = ddnsHost(p);
       const targetIPs = { ipv4: cfg.a ? ipv4 : null, ipv6: cfg.aaaa ? ipv6 : null };
 
+      // A newly added provider stays out of the scheduled batch until its Test
+      // succeeds — a half-configured endpoint shouldn't be hit on a timer. An
+      // explicit per-provider update (ddnsId) still runs, so Test/Update work.
+      if (!p.tested && !ddnsId) {
+        records.push({
+          fqdn: host || p.label || typeLabel,
+          type: typeLabel,
+          status: 'disabled',
+          detail: `${typeLabel}${p.label ? ` ${p.label}` : ''}: not tested yet — run Test to include it in scheduled updates`,
+          at: new Date().toISOString(),
+        });
+        state.log('info', `${typeLabel} ${host || p.label || ''}: skipped — not tested yet`);
+        continue;
+      }
+
       // Only contact a provider when something actually changed — the IP, or the
       // provider's own settings. Redundant updates are wasteful and some services
       // (No-IP) explicitly ask clients not to send them; Custom URL endpoints

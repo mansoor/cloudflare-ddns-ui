@@ -57,7 +57,9 @@ export function defaultConfig() {
 export const DDNS_FORCE_UNITS = ['minutes', 'hours', 'days'];
 export const CHANNEL_TYPES = ['discord', 'slack', 'webhook'];
 export const WEBHOOK_FORMATS = ['json', 'text'];
-const DEFAULT_ITEM_COMMENT = 'cf-ddns-ui';
+// Only the default for NEW lists — existing lists keep whatever comment is
+// already stored (changing theirs would orphan the items they've already tagged).
+const DEFAULT_ITEM_COMMENT = 'cf-ddns-plus';
 
 async function ensureDataDir() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -181,6 +183,11 @@ function normalizeDdnsProvider(p, forceMaster = { every: 30, unit: 'days' }) {
     // Re-send on a schedule even when nothing changed — keeps free hosts from
     // expiring and re-asserts the record if it was changed at the provider.
     // On by default so skipping unchanged updates never silently lets a host lapse.
+    // A provider joins scheduled runs only once a Test has succeeded, so a
+    // half-configured one can't hammer a real endpoint. Providers that predate
+    // this flag already have an id, so they stay eligible on upgrade; a brand
+    // new one (no id yet) starts untested.
+    tested: p?.tested != null ? Boolean(p.tested) : Boolean(p?.id),
     force_update: p?.force_update !== false,
     force_default: forceDefault, // follow the master interval
     force_every: forceEvery, // used only when force_default is false
@@ -370,6 +377,8 @@ export function mergeIncomingConfig(existing, incoming) {
       ...p,
       token: restore(p.token, prev?.token),
       password: restore(p.password, prev?.password),
+      // `tested` is set by a successful Test, never by a settings save.
+      tested: prev ? prev.tested : p.tested,
     };
   });
   return merged;

@@ -240,6 +240,23 @@ function setCollapsed(node, collapsed) {
   $('.acc-chevron', node).classList.toggle('rotate-90', !collapsed);
 }
 
+// Bring a freshly added card/row into view and put the cursor in its first
+// editable field. With a screenful of items an append lands off-screen, so
+// "+ Add" otherwise looks like it did nothing.
+function revealNewCard(node) {
+  node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  const preferred = $(
+    '.acc-label, .waf-label, .ch-label, .hb-label, .ddns-label, .sub-name, .ddns-url-label',
+    node
+  );
+  const field =
+    preferred ||
+    $$('input:not([type="hidden"]):not([type="checkbox"]), select, textarea', node).find(
+      (el) => !el.disabled && !el.readOnly
+    );
+  if (field) field.focus({ preventScroll: true });
+}
+
 // Deep-clone a plain config object to stash a card's last-saved snapshot.
 const cloneData = (o) => (o ? JSON.parse(JSON.stringify(o)) : {});
 
@@ -290,8 +307,10 @@ function makeAccountRow(acc = {}, { expanded = false } = {}) {
   zoneSel.addEventListener('change', () => updateAccountSummary(node));
 
   $('.acc-add-sub', node).addEventListener('click', () => {
-    subsWrap.appendChild(makeSubRow(node));
+    const row = makeSubRow(node);
+    subsWrap.appendChild(row);
     updateAccountSummary(node);
+    revealNewCard(row);
   });
   $('.acc-verify', node).addEventListener('click', () => verifyAccount(node));
   $('.acc-save', node).addEventListener('click', () => saveZone(node));
@@ -1426,17 +1445,21 @@ function updateDdnsSummary(node) {
   $('.ddns-summary-title', node).textContent = label || host || 'New provider';
   $('.ddns-summary-meta', node).textContent = `${typeName} · ${host || 'not configured'}`;
   const badge = $('.ddns-summary-badge', node);
-  badge.textContent = enabled ? 'enabled' : 'disabled';
-  badge.className =
-    'ddns-summary-badge badge ' +
-    (enabled
-      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-      : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300');
+  const tested = node.dataset.tested === '1';
+  // Enabled but untested is a real state: it won't run on the schedule yet.
+  const [text, style] = !enabled
+    ? ['disabled', 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300']
+    : !tested
+    ? ['needs test', 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300']
+    : ['enabled', 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'];
+  badge.textContent = text;
+  badge.className = 'ddns-summary-badge badge ' + style;
 }
 
 function makeDdnsRow(p = {}, { expanded = false } = {}) {
   const node = $('#ddns-template').content.firstElementChild.cloneNode(true);
   node.dataset.id = p.id || '';
+  if (p.tested) node.dataset.tested = '1'; // gates inclusion in scheduled runs
   node.__saved = cloneData(p);
   $('.ddns-type', node).value = p.type || 'duckdns';
   $('.ddns-label', node).value = p.label || '';
@@ -1478,9 +1501,11 @@ function makeDdnsRow(p = {}, { expanded = false } = {}) {
     toggleDdnsFields(node);
     updateDdnsSummary(node);
   });
-  $('.ddns-add-url', node).addEventListener('click', () =>
-    $('.ddns-urls', node).appendChild(makeDdnsUrlRow(node))
-  );
+  $('.ddns-add-url', node).addEventListener('click', () => {
+    const row = makeDdnsUrlRow(node);
+    $('.ddns-urls', node).appendChild(row);
+    revealNewCard(row);
+  });
   $('.ddns-force', node).addEventListener('change', (e) => {
     // Turning force update on starts from the master default.
     if (e.target.checked) $('.ddns-force-default', node).checked = true;
@@ -1598,12 +1623,15 @@ async function deleteDdns(node) {
 
 async function testDdns(node) {
   const msg = $('.ddns-verify-msg', node);
-  const missing = ddnsMissingField(node);
-  if (missing) {
-    msg.textContent = `✕ ${missing}`;
+  const fail = (text) => {
+    msg.textContent = `✕ ${text}`;
     msg.className = 'ddns-verify-msg sm:col-span-2 text-xs text-red-600 dark:text-red-400';
-    return;
-  }
+  };
+  const missing = ddnsMissingField(node);
+  if (missing) return fail(missing);
+  // A passing Test is what admits the provider to scheduled runs, and that flag
+  // is stored against its id — so it has to be saved before it can be tested.
+  if (!node.dataset.id) return fail('Save the provider first, then Test it.');
   msg.textContent = 'Testing…';
   msg.className = 'ddns-verify-msg sm:col-span-2 text-xs text-slate-500';
   try {
@@ -1613,9 +1641,11 @@ async function testDdns(node) {
     });
     msg.textContent = `✓ ${res.detail || 'Provider responded OK'}`;
     msg.className = 'ddns-verify-msg sm:col-span-2 text-xs text-green-600 dark:text-green-400';
+    // The server just marked it tested — reflect that in the summary badge.
+    node.dataset.tested = '1';
+    updateDdnsSummary(node);
   } catch (err) {
-    msg.textContent = `✕ ${err.message}`;
-    msg.className = 'ddns-verify-msg sm:col-span-2 text-xs text-red-600 dark:text-red-400';
+    fail(err.message);
   }
 }
 
@@ -2031,28 +2061,38 @@ async function init() {
     window.location.href = '/login';
   });
   $('#add-account').addEventListener('click', () => {
-    $('#accounts').appendChild(makeAccountRow({}, { expanded: true }));
+    const node = makeAccountRow({}, { expanded: true });
+    $('#accounts').appendChild(node);
     updateAccountsEmpty();
+    revealNewCard(node);
   });
   $('#settings-form').addEventListener('submit', (e) => {
     e.preventDefault();
     saveConfig({ btn: $('#save-btn'), msg: $('#save-msg') });
   });
   $('#add-waf').addEventListener('click', () => {
-    $('#waf-lists').appendChild(makeWafRow({}, { expanded: true }));
+    const node = makeWafRow({}, { expanded: true });
+    $('#waf-lists').appendChild(node);
     updateWafEmpty();
+    revealNewCard(node);
   });
   $('#add-channel').addEventListener('click', () => {
-    $('#channels').appendChild(makeChannelRow({}, { expanded: true }));
+    const node = makeChannelRow({}, { expanded: true });
+    $('#channels').appendChild(node);
     updateChannelsEmpty();
+    revealNewCard(node);
   });
   $('#add-heartbeat').addEventListener('click', () => {
-    $('#heartbeats').appendChild(makeHeartbeatRow({ enabled: true }, { expanded: true }));
+    const node = makeHeartbeatRow({ enabled: true }, { expanded: true });
+    $('#heartbeats').appendChild(node);
     updateHeartbeatsEmpty();
+    revealNewCard(node);
   });
   $('#add-ddns').addEventListener('click', () => {
-    $('#ddns-list').appendChild(makeDdnsRow({}, { expanded: true }));
+    const node = makeDdnsRow({}, { expanded: true });
+    $('#ddns-list').appendChild(node);
     updateDdnsEmpty();
+    revealNewCard(node);
   });
   $('#update-now').addEventListener('click', updateNow);
   $('#pause-toggle').addEventListener('click', togglePause);

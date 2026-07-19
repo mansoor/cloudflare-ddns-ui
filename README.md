@@ -31,13 +31,14 @@ It detects your public IPv4/IPv6 on a schedule and creates or updates the matchi
 - 🎯 **Per-zone update & enable/disable** — an "Update" badge syncs just one zone on demand; toggle a zone off to park it without deleting
 - 🎚️ **Per-subdomain record types** — global A/AAAA master switches, narrowed per host (e.g. one subdomain dual-stack, another IPv4-only)
 - 🛡️ **WAF / IP Lists** — keep a Cloudflare account-level IP List updated with your current IP, to reference in firewall rules
-- 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS, FreeDNS, generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, …), or any **Custom URL** service (freemyip, dynv6, …) behind a flag
+- 🦆 **Other DDNS providers** *(opt-in)* — DuckDNS, FreeDNS, generic DynDNS2 (No-IP, Dynu, Namecheap, deSEC, DNS-O-Matic, …), or any **Custom URL** service (freemyip, dynv6, …) behind a flag. Updates are sent **only when something changed**, with an optional forced refresh, and a provider joins the schedule only after a successful **Test**
 - 🔔 **Notifications** — Discord, Slack, or a generic webhook/ntfy, with **per-channel** event selection (update failures, IP changes, and/or successful record changes)
 - 💓 **Heartbeat monitoring** — ping **Healthchecks.io**, **Uptime Kuma**, **Better Stack**, or a **custom URL** (`{status}`/`{message}` placeholders) after each run so you're alerted if the updater ever stops
 - 🎨 **Light / Dark / Paper / System** theme — *Paper* is a warm parchment look with wine-coloured buttons
 - ✅ **Idempotent** — only touches records that actually changed
 - 🛟 **Safe by default** — refuses to write a **Cloudflare-owned IP** into a record (guards against a mis-detected IP), and **tags the records it manages** so "purge" only ever removes its own — never records you created elsewhere
-- 🔎 **Live dashboard** — current IPs, per-record status, collapsible per-update activity log
+- 🔎 **Live dashboard** — current IPs (with the detection provider in use), per-record status, collapsible per-update activity log
+- ↩️ **Cancel on every card** — back out of an edit and revert to the last saved state, or discard a card you just added, without a page refresh
 - 🗒️ **Activity log storage** — in-memory by default (configurable row cap); optionally persist to a file under `/data` (JSONL) with a nightly retention prune
 - 💾 **Backup & restore** — download your whole config as a file, or restore one onto another instance (password-gated; restore needs a typed confirmation since it overwrites everything)
 - 🐳 **Docker-ready** — published image, config persisted to a volume
@@ -129,7 +130,7 @@ so you can reference that list in a WAF/firewall rule to allow access from your 
 2. Create a token with **Account → Account Filter Lists → Edit**.
 3. In the UI: **WAF → Add list**, paste the Account ID + token, **Verify & load lists**, pick the list, Save.
 
-Only list items tagged with the list's **managed comment** (default `cf-ddns-ui`) are touched — any
+Only list items tagged with the list's **managed comment** (default `cf-ddns-plus`) are touched — any
 entries you added manually are left alone.
 
 ## Notifications
@@ -175,6 +176,17 @@ Enable it by setting `ENABLE_OTHER_DDNS=true`; a **DDNS** tab appears. Then **Ad
 
 **Test** does a live update and shows the provider's response. When off, the tab is hidden and these
 providers are never contacted — your Cloudflare setup is completely unaffected either way.
+
+### A provider must pass a Test before it runs on the schedule
+
+A newly added provider is **excluded from scheduled runs until you Test it successfully** — a
+half-configured endpoint shouldn't get hit on a timer. Until then its card shows a **needs test** badge,
+and each run records it as skipped with the reason.
+
+So the order is **Save → Test**: the result is stored against the provider, so Test needs it saved first.
+Once a Test passes the badge flips to **enabled** and it joins the schedule; later edits and saves don't
+reset it. Providers that existed before this rule keep working untouched. The per-provider **Update**
+button always runs, tested or not.
 
 ### When updates are actually sent
 
