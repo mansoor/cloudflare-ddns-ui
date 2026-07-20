@@ -39,13 +39,34 @@ npm run watch:css
 
 Prefer Docker? `docker compose up --build` builds and runs the container the same way CI does.
 
+## Tests
+
+```bash
+npm test           # node --test — discovers test/*.test.js
+npm run test:watch # re-run on change
+```
+
+They use Node's built-in test runner — no test framework to install. Everything runs offline: DDNS and
+heartbeat providers are exercised against a throwaway `node:http` server on a random port, and the
+updater tests use the `literal` IP provider with a temp `DATA_DIR`, so **no real provider or Cloudflare
+zone is ever contacted**.
+
+What's covered: config normalization and the back-compat migrations, secret redact/restore, the
+Cloudflare-IP guard, backup/restore parsing, each DDNS provider's response handling, heartbeat request
+shapes, and the updater rules that decide whether a provider is contacted at all (Test gating,
+only-send-when-changed, forced refresh).
+
+Please add a test with any change to that logic — it's the part that silently stops updates when it
+regresses. UI behaviour isn't covered by the suite; exercise that in the browser (see below).
+
 ## Project layout
 
 | Path | What's there |
 |---|---|
 | `src/` | Fastify server, updater engine, Cloudflare/IP/notify clients, scheduler, routes |
 | `web/` | Tailwind UI — `index.html`, `login.html`, `js/app.js`, `css/tailwind.src.css` |
-| `.github/workflows/` | CI that builds and publishes the Docker image to GHCR on `v*` tags |
+| `test/` | Node test-runner suites (see **Tests** above) |
+| `.github/workflows/` | `ci.yml` (tests + CSS + Docker build on every PR) and the GHCR publish on `v*` tags |
 
 See the **How it works** section of the [README](README.md) for a fuller map.
 
@@ -56,7 +77,8 @@ See the **How it works** section of the [README](README.md) for a fuller map.
 1. **Fork** the repo (external contributors) or create a **branch** (collaborators):
    `git checkout -b my-change`
 2. Make your change. If you touched anything under `web/`, **rebuild the CSS**: `npm run build:css`.
-3. **Verify it works** — run `npm run dev` (or `docker compose up --build`) and exercise the affected
+3. **Run `npm test`**, and add a test if you changed logic under `src/`.
+4. **Verify it works** — run `npm run dev` (or `docker compose up --build`) and exercise the affected
    flow in the browser, not just a syntax check.
 4. Keep the PR focused and reasonably small; unrelated changes belong in separate PRs.
 5. Open the PR against `main` and fill out the PR template.
