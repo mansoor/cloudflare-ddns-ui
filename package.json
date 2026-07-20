@@ -10,6 +10,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
+    "test": "node --test test/",
+    "test:watch": "node --test --watch test/",
     "build:css": "tailwindcss -i ./web/css/tailwind.src.css -o ./public/app.css --minify",
     "watch:css": "tailwindcss -i ./web/css/tailwind.src.css -o ./public/app.css --watch"
   },

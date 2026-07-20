@@ -1,5 +1,6 @@
 # Cloudflare DDNS+
 
+[![CI](https://github.com/mansoor/cloudflare-ddns-plus/actions/workflows/ci.yml/badge.svg)](https://github.com/mansoor/cloudflare-ddns-plus/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/mansoor/cloudflare-ddns-plus?sort=semver)](https://github.com/mansoor/cloudflare-ddns-plus/releases)
 [![GHCR image](https://img.shields.io/badge/ghcr.io-cloudflare--ddns--plus-1668dc?logo=docker&logoColor=white)](https://github.com/mansoor/cloudflare-ddns-plus/pkgs/container/cloudflare-ddns-plus)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
