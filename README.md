@@ -94,8 +94,41 @@ Then open <http://localhost:8080>. If you left `ADMIN_PASSWORD` blank, grab the 
 docker compose logs | grep -A2 "Generated a temporary password"
 ```
 
-Config and secrets persist in `./data`. Pin a version with `:v0.1.0` instead of `:latest`. Hit a
+Config and secrets persist in `./data`. Pin a version with `:v0.5.0` instead of `:latest`. Hit a
 problem? See [Troubleshooting](#troubleshooting).
+
+### Option C — Unraid
+
+A Community Applications template lives in [`unraid/`](unraid/cloudflare-ddns-plus.xml).
+
+Until it lands in the CA catalogue you can add it yourself: **Docker → Add Container → Template →**
+paste the template URL below, or drop the XML into `/boot/config/plugins/dockerMan/templates-user/`.
+
+```
+https://raw.githubusercontent.com/mansoor/cloudflare-ddns-plus/main/unraid/cloudflare-ddns-plus.xml
+```
+
+Defaults to port `8080` and `/mnt/user/appdata/cloudflare-ddns-plus` for `/data`. Leave **Admin password**
+blank to get a generated one in the container log, or set it up front.
+
+### Option D — TrueNAS SCALE
+
+TrueNAS SCALE (24.10 "Electric Eel" and later) can run this today as a **Custom App** — no catalogue
+entry needed:
+
+**Apps → Discover Apps → Custom App**, then:
+
+| Field | Value |
+|---|---|
+| Image repository | `ghcr.io/mansoor/cloudflare-ddns-plus` |
+| Image tag | `latest` (or pin `v0.5.0`) |
+| Container port | `8080` |
+| Node port | e.g. `30080` (TrueNAS reserves ports below 9000) |
+| Storage | mount a host path or dataset at **`/data`** |
+| Environment | `ADMIN_USERNAME`, `ADMIN_PASSWORD`, optionally `ENABLE_OTHER_DDNS=true` |
+
+The `/data` mount is what persists your config and API tokens — without it everything resets when the
+app is redeployed.
 
 ## Configuration (environment)
 
@@ -303,6 +336,14 @@ the relevant event toggle is on. Send failures are logged in the activity log.
 **`docker pull` says `unauthorized`/`denied`.** The official image is public, so this shouldn't happen.
 If you *forked* and published your own package, it may be private — make it public (repo → **Packages**
 → **Package settings** → change visibility) or `docker login ghcr.io` first.
+
+## Project
+
+| | |
+|---|---|
+| **Changelog** | [CHANGELOG.md](CHANGELOG.md) — and the [releases page](https://github.com/mansoor/cloudflare-ddns-plus/releases) for full notes |
+| **Contributing** | [CONTRIBUTING.md](CONTRIBUTING.md) — dev setup, `npm test`, PR workflow |
+| **Security** | [SECURITY.md](SECURITY.md) — how to report an issue, and the trust model (**read before exposing this anywhere**) |
 
 ## License
 

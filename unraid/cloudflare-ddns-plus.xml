@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>cloudflare-ddns-plus</Name>
+  <Repository>ghcr.io/mansoor/cloudflare-ddns-plus:latest</Repository>
+  <Registry>https://github.com/mansoor/cloudflare-ddns-plus/pkgs/container/cloudflare-ddns-plus</Registry>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Latest stable release</TagDescription>
+  </Branch>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/mansoor/cloudflare-ddns-plus/issues</Support>
+  <Project>https://github.com/mansoor/cloudflare-ddns-plus</Project>
+  <Overview>
+    Self-hosted dynamic DNS updater for Cloudflare, with a web UI instead of a JSON config file.
+
+    It checks your public IPv4/IPv6 on a schedule and creates or updates the matching Cloudflare A / AAAA records, so a home server on a dynamic IP stays reachable through your domain. Zones, subdomains, proxying, TTL, IP-detection provider and schedule are all configured through the UI.
+
+    Also includes: per-subdomain A/AAAA control, Cloudflare WAF IP-list syncing, notifications (Discord / Slack / webhook / ntfy) with per-channel event selection, heartbeat monitoring (Healthchecks.io, Uptime Kuma, Better Stack, custom URL), config backup and restore, an activity log, light/dark/paper themes, and an optional tab for other DDNS providers (DuckDNS, FreeDNS, DynDNS2, or any custom update URL).
+
+    First run: leave ADMIN_PASSWORD blank and a random password is printed once in the container log, or set one here up front. Everything else is configured in the web UI.
+
+    Not affiliated with, or endorsed by, Cloudflare, Inc.
+  </Overview>
+  <Category>Network:DNS Network:Other Tools:Utilities</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/mansoor/cloudflare-ddns-plus/main/unraid/cloudflare-ddns-plus.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/mansoor/cloudflare-ddns-plus/main/docs/icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+
+  <Config
+    Name="WebUI Port"
+    Target="8080"
+    Default="8080"
+    Mode="tcp"
+    Description="Port for the web interface."
+    Type="Port"
+    Display="always"
+    Required="true"
+    Mask="false">8080</Config>
+
+  <Config
+    Name="Data"
+    Target="/data"
+    Default="/mnt/user/appdata/cloudflare-ddns-plus"
+    Mode="rw"
+    Description="Stores config.json (including your Cloudflare API tokens) and the session secret. Back this up."
+    Type="Path"
+    Display="always"
+    Required="true"
+    Mask="false">/mnt/user/appdata/cloudflare-ddns-plus</Config>
+
+  <Config
+    Name="Admin username"
+    Target="ADMIN_USERNAME"
+    Default="admin"
+    Mode=""
+    Description="Login name for the web UI."
+    Type="Variable"
+    Display="always"
+    Required="false"
+    Mask="false">admin</Config>
+
+  <Config
+    Name="Admin password"
+    Target="ADMIN_PASSWORD"
+    Default=""
+    Mode=""
+    Description="Login password for the web UI. Leave blank to have a random one generated and printed once in the container log."
+    Type="Variable"
+    Display="always"
+    Required="false"
+    Mask="true"></Config>
+
+  <Config
+    Name="Session secret"
+    Target="SESSION_SECRET"
+    Default=""
+    Mode=""
+    Description="Secret used to sign the login cookie. Leave blank and one is generated and saved into the data folder."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="true"></Config>
+
+  <Config
+    Name="Enable other DDNS providers"
+    Target="ENABLE_OTHER_DDNS"
+    Default="false"
+    Mode=""
+    Description="Set to true to show the optional DDNS tab for DuckDNS, FreeDNS, DynDNS2 and custom update URLs. Off by default; the Cloudflare side is unaffected either way."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">false</Config>
+
+  <Config
+    Name="Disable update check"
+    Target="DISABLE_UPDATE_CHECK"
+    Default="false"
+    Mode=""
+    Description="Set to true to stop the footer checking GitHub for a newer release (for air-gapped installs)."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false">false</Config>
+
+  <Config
+    Name="Timezone"
+    Target="TZ"
+    Default=""
+    Mode=""
+    Description="Timezone for activity-log timestamps, e.g. Europe/London."
+    Type="Variable"
+    Display="advanced"
+    Required="false"
+    Mask="false"></Config>
+</Container>
